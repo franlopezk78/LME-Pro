@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Share2, RefreshCw, ShoppingBasket, Edit3, ShoppingCart, Plus, Mic, Package, Trash2, CheckCircle, ChevronDown, Settings, Brain, Save } from 'lucide-react';
+import { Share2, RefreshCw, ShoppingBasket, Edit3, ShoppingCart, Plus, Mic, Package, Trash2, CheckCircle, ChevronDown, Settings, Brain, Save, Loader2 } from 'lucide-react';
 import type { ShoppingItem } from './types';
 import { CATALOG_DATA } from './constants';
 
@@ -27,7 +27,7 @@ const App: React.FC = () => {
   }, [items]);
 
   useEffect(() => {
-    localStorage.setItem('lme_gemini_key', apiKey);
+    localStorage.setItem('lme_gemini_key', apiKey.trim());
   }, [apiKey]);
 
   // Audio Feedback
@@ -50,7 +50,7 @@ const App: React.FC = () => {
     } catch (e) {}
   };
 
-  // Voice Logic (Single Initialization)
+  // Voice Logic (Stable for Mobile)
   useEffect(() => {
     const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRec) return;
@@ -58,7 +58,7 @@ const App: React.FC = () => {
     const recognition = new SpeechRec();
     recognition.lang = 'es-ES';
     recognition.interimResults = true;
-    recognition.continuous = true;
+    recognition.continuous = false; // Cambiado a false para evitar duplicados en Android
 
     recognition.onstart = () => {
       setIsListening(true);
@@ -67,54 +67,53 @@ const App: React.FC = () => {
     };
 
     recognition.onresult = (e: any) => {
-      let finalTranscript = '';
-      for (let i = 0; i < e.results.length; i++) {
-        finalTranscript += e.results[i][0].transcript;
-      }
-      setTranscript(finalTranscript);
+      const result = e.results[0][0].transcript;
+      setTranscript(result);
     };
 
-    recognition.onerror = () => setIsListening(false);
+    recognition.onerror = (e: any) => {
+      console.error("Speech Error", e);
+      setIsListening(false);
+    };
     
     recognition.onend = () => {
-      // Solo reiniciamos si el estado 'isListening' sigue siendo true (pérdida de foco, etc)
-      // Pero si el usuario le dio a "Terminar", no reiniciamos.
+      setIsListening(false);
     };
 
     recognitionRef.current = recognition;
-  }, []); // Solo se ejecuta una vez al cargar la app
+  }, []);
 
   const toggleListening = () => {
     if (isListening) {
       recognitionRef.current?.stop();
-      setIsListening(false);
-      playBeep('stop');
-      // Usamos un pequeño delay para asegurar que el transcript final esté listo
-      setTimeout(() => {
-        setTranscript(prev => {
-          if (prev.trim()) processVoiceSmart(prev);
-          return '';
-        });
-      }, 500);
     } else {
       setTranscript('');
       try {
         recognitionRef.current?.start();
       } catch (e) {
-        // Si ya estaba arrancado por error, lo paramos y arrancamos
         recognitionRef.current?.stop();
         setTimeout(() => recognitionRef.current?.start(), 100);
       }
     }
   };
 
+  // Process when transcript finishes
+  useEffect(() => {
+    if (!isListening && transcript.trim()) {
+      playBeep('stop');
+      processVoiceSmart(transcript);
+      const timer = setTimeout(() => setTranscript(''), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isListening]);
+
   const getCategoryInfo = (catName: string) => {
-    const found = CATALOG_DATA.find(c => c.c.includes(catName));
+    const cleanCat = catName.toLowerCase();
+    const found = CATALOG_DATA.find(c => c.c.toLowerCase().includes(cleanCat));
     if (found) return { name: found.c, color: found.col };
     
-    // Fallback search in catalog items
     for (const cat of CATALOG_DATA) {
-      if (cat.items.some(item => catName.toLowerCase().includes(item.n.toLowerCase()))) 
+      if (cat.items.some(item => cleanCat.includes(item.n.toLowerCase()))) 
         return { name: cat.c, color: cat.col };
     }
     return { name: "⚪ Varios", color: "#94a3b8" };
@@ -124,13 +123,11 @@ const App: React.FC = () => {
     if (!text.trim()) return;
     const clean = text.trim().charAt(0).toUpperCase() + text.trim().slice(1).toLowerCase();
     
-    let info;
+    let info = { name: "⚪ Varios", color: "#94a3b8" };
     if (category) {
       info = getCategoryInfo(category);
     } else {
-      // Old school categorization logic as fallback
       const t = clean.toLowerCase();
-      info = { name: "⚪ Varios", color: "#94a3b8" };
       for (const cat of CATALOG_DATA) {
         if (cat.items.some(item => t.includes(item.n.toLowerCase()))) {
           info = { name: cat.c, color: cat.col };
@@ -150,41 +147,44 @@ const App: React.FC = () => {
   };
 
   const processVoiceSmart = async (t: string) => {
-    if (!apiKey) {
-      // Fallback to basic processing if no API Key
+    if (!apiKey || apiKey.length < 10) {
       processVoiceBasic(t);
       return;
     }
 
     setIsProcessing(true);
     try {
-      const prompt = `Eres un asistente de lista de la compra experto. 
-      Analiza el siguiente texto dictado por voz y conviértelo en una lista de productos. 
-      Si mencionan una receta (ej: tortilla de patatas), añade sus ingredientes básicos.
-      Si mencionan cantidades, inclúyelas en el nombre del producto (ej: "2 litros de leche").
-      IMPORTANTE: Devuelve EXCLUSIVAMENTE un JSON con este formato: {"items": [{"name": "producto", "category": "Categoría"}]}
-      Usa solo estas categorías: ${CATALOG_DATA.map(c => c.c.split(' ')[1]).join(', ')}, Varios.
+      const prompt = `Extrae los productos de este texto. Si es una receta, añade sus ingredientes.
+      Devuelve un JSON con este formato: {"items": [{"name": "producto", "category": "Categoría"}]}
+      Categorías: Verduras, Frutas, Carne, Pescado, Lácteos, Charcutería, Despensa, Pan, Limpieza, Mascotas, Varios.
       Texto: "${t}"`;
 
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { response_mime_type: "application/json" }
+          contents: [{ parts: [{ text: prompt }] }]
         })
       });
 
+      if (!response.ok) throw new Error("API Error");
+
       const data = await response.json();
-      const result = JSON.parse(data.candidates[0].content.parts[0].text);
+      let textResponse = data.candidates[0].content.parts[0].text;
       
-      if (result.items) {
+      // Limpiar posible markdown del JSON
+      textResponse = textResponse.replace(/```json|```/g, "").trim();
+      const result = JSON.parse(textResponse);
+      
+      if (result.items && Array.isArray(result.items)) {
         result.items.forEach((i: any) => addItem(i.name, i.category));
+      } else {
+        processVoiceBasic(t);
       }
     } catch (err) {
-      console.error(err);
-      processVoiceBasic(t); // Fallback
-      setError("Error con la IA. Usando modo básico.");
+      console.error("Smart Process Error:", err);
+      processVoiceBasic(t);
+      setError("IA no disponible. Usando modo básico.");
       setTimeout(() => setError(null), 3000);
     } finally {
       setIsProcessing(false);
@@ -319,7 +319,7 @@ const App: React.FC = () => {
           </div>
 
           <p className="text-xs text-slate-500 leading-relaxed">
-            Esta llave se guarda solo en tu móvil. Activa el reconocimiento inteligente, comprensión de recetas y auto-categorización.
+            Pega la llave que has copiado de Google AI Studio. Esto activará la comprensión de recetas y el modo inteligente.
           </p>
 
           <button 
@@ -417,11 +417,11 @@ const App: React.FC = () => {
               </div>
             </div>
             <p className="font-medium text-slate-500 min-h-[3rem] italic">
-              {transcript || 'Te escucho...'}
+              {transcript || 'Habla ahora...'}
             </p>
             <button 
               onClick={toggleListening}
-              className="px-8 py-3 bg-slate-200 dark:bg-slate-700 rounded-2xl font-bold"
+              className="px-8 py-3 bg-red-500 text-white rounded-2xl font-bold"
             >
               Terminar
             </button>
@@ -433,7 +433,7 @@ const App: React.FC = () => {
       {isProcessing && (
         <div className="fixed inset-0 bg-violet-500/20 backdrop-blur-[2px] z-40 flex items-center justify-center">
           <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-2xl flex items-center gap-4">
-            <div className="w-6 h-6 border-4 border-violet-500 border-t-transparent rounded-full animate-spin" />
+            <Loader2 className="w-6 h-6 text-violet-500 animate-spin" />
             <p className="font-bold text-violet-500">Evi está pensando...</p>
           </div>
         </div>
