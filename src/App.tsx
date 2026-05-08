@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Share2, RefreshCw, ShoppingBasket, Edit3, ShoppingCart, Plus, Mic, Package, Trash2, CheckCircle, ChevronDown } from 'lucide-react';
-import type { ShoppingItem, CatalogCategory } from './types';
+import type { ShoppingItem } from './types';
 import { CATALOG_DATA } from './constants';
 
 const App: React.FC = () => {
