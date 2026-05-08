@@ -139,27 +139,40 @@ const App: React.FC = () => {
 
   const addItem = (text: string, category?: string, price?: number) => {
     if (!text.trim()) return;
-    const clean = text.trim().charAt(0).toUpperCase() + text.trim().slice(1).toLowerCase();
-    const found = CATALOG_DATA.find(c => c.c.toLowerCase().includes((category || "").toLowerCase()));
-    const info = found ? { name: found.c, color: found.col } : { name: "⚪ Varios", color: "#94a3b8" };
+    const cleanText = text.trim().charAt(0).toUpperCase() + text.trim().slice(1).toLowerCase();
+    
+    // Si no viene categoría, intentamos adivinarla buscando en el catálogo local
+    let finalCat = "⚪ Varios";
+    let finalColor = "#94a3b8";
+
+    const catToSearch = (category || "").trim().toLowerCase();
+    const found = CATALOG_DATA.find(c => 
+      (catToSearch !== "" && c.c.toLowerCase() === catToSearch) || 
+      c.items.some(i => i.n.toLowerCase() === cleanText.toLowerCase())
+    );
+
+    if (found) {
+      finalCat = found.c;
+      finalColor = found.col;
+    }
 
     let trend: 'up' | 'down' | 'equal' | undefined;
-    if (price && priceHistory[clean]) {
-      if (price > priceHistory[clean]) trend = 'up';
-      else if (price < priceHistory[clean]) trend = 'down';
+    if (price && priceHistory[cleanText]) {
+      if (price > priceHistory[cleanText]) trend = 'up';
+      else if (price < priceHistory[cleanText]) trend = 'down';
       else trend = 'equal';
     }
 
     if (price) {
-      setPriceHistory(prev => ({ ...prev, [clean]: price }));
+      setPriceHistory(prev => ({ ...prev, [cleanText]: price }));
     }
 
     setItems(prev => [{
       id: Math.random().toString(36).substr(2, 9),
-      text: clean,
+      text: cleanText,
       checked: false,
-      catName: info.name,
-      catColor: info.color,
+      catName: finalCat,
+      catColor: finalColor,
       quantity: 1,
       isFavorite: false,
       price: price,
@@ -174,7 +187,10 @@ const App: React.FC = () => {
     }
     setIsProcessing(true);
     try {
-      const prompt = `Extrae productos en JSON: {"items": [{"name": "producto", "category": "Categoría", "price": 0.0}]}. Categorías: Verduras, Frutas, Carne, Pescado, Lácteos, Charcutería, Despensa, Pan, Limpieza, Mascotas, Varios. Texto: "${t}"`;
+      const prompt = `Clasifica productos en JSON: {"items": [{"name": "producto", "category": "Categoría"}]}. 
+      CATEGORÍAS OBLIGATORIAS: Verduras, Frutas, Carne, Pescado, Lácteos, Charcutería, Despensa, Pan, Limpieza, Mascotas, Varios. 
+      La LEJÍA siempre es Limpieza. El POLLO es Carne.
+      Texto: "${t}"`;
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey.trim()}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { response_mime_type: "application/json" } })
