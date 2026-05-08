@@ -79,6 +79,7 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [priceHistory, setPriceHistory] = useState<Record<string, number>>(() => JSON.parse(localStorage.getItem('lme_price_history') || '{}'));
+  const [isDark, setIsDark] = useState(() => localStorage.getItem('lme_dark_mode') === 'true');
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
   const recognitionRef = useRef<any>(null);
@@ -88,6 +89,11 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem('lme_gemini_key', apiKey.trim()); }, [apiKey]);
   useEffect(() => { localStorage.setItem('lme_theme_color', themeColor); }, [themeColor]);
   useEffect(() => { localStorage.setItem('lme_price_history', JSON.stringify(priceHistory)); }, [priceHistory]);
+  useEffect(() => {
+    localStorage.setItem('lme_dark_mode', isDark.toString());
+    if (isDark) document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+  }, [isDark]);
 
   const themes: Record<string, any> = {
     violet: { from: 'from-violet-500', to: 'to-fuchsia-500', shadow: 'shadow-violet-500/30', text: 'text-violet-500', bg: 'bg-violet-500' },
@@ -268,7 +274,12 @@ const App: React.FC = () => {
             <Camera size={22} strokeWidth={2.5} />
             <input id="ticket-input" type="file" accept="image/*" capture="environment" className="hidden" onChange={handleReceiptUpload} />
           </button>
-          <div className="text-center flex-1"><h1 className="text-2xl font-extrabold tracking-tight">Evi<span className={`text-transparent bg-clip-text bg-gradient-to-r ${activeTheme.from} ${activeTheme.to}`}>Shop</span></h1></div>
+          <div 
+            onClick={() => { setShowSettings(false); setIsCatalogOpen(false); }}
+            className="text-center flex-1 cursor-pointer active:scale-95 transition-transform"
+          >
+            <h1 className="text-2xl font-extrabold tracking-tight">Evi<span className={`text-transparent bg-clip-text bg-gradient-to-r ${activeTheme.from} ${activeTheme.to}`}>Shop</span></h1>
+          </div>
           <div className="flex gap-2 justify-end">
             <button onClick={() => setShowSettings(!showSettings)} className="p-2.5 rounded-2xl bg-white dark:bg-slate-800 text-slate-500 shadow-lg"><Settings size={20} /></button>
             <button onClick={() => setMode(mode === 'edit' ? 'shop' : 'edit')} className={`p-2.5 rounded-2xl shadow-lg transition-all ${mode === 'edit' ? `bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} text-white` : 'bg-slate-200 dark:bg-slate-800 text-slate-500'}`}>
@@ -334,6 +345,12 @@ const App: React.FC = () => {
           </div>
           <div className="space-y-2"><label className="text-xs font-black uppercase text-slate-400">Gemini API Key</label><input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="AIza..." className="w-full p-5 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200" /></div>
           <div className="space-y-2"><label className="text-xs font-black uppercase text-slate-400">Color App</label><div className="flex justify-between gap-2 p-4 bg-white dark:bg-slate-800 rounded-3xl">{['violet', 'blue', 'emerald', 'rose', 'amber'].map(t => <button key={t} onClick={() => setThemeColor(t)} className={`w-10 h-10 rounded-full bg-gradient-to-br ${themes[t].from} ${themes[t].to} ${themeColor === t ? 'ring-4 ring-slate-200' : ''}`} />)}</div></div>
+          <div className="flex items-center justify-between p-5 bg-white dark:bg-slate-800 rounded-3xl">
+            <span className="text-sm font-bold">Modo Oscuro</span>
+            <button onClick={() => setIsDark(!isDark)} className={`w-14 h-8 rounded-full transition-all relative ${isDark ? 'bg-violet-500' : 'bg-slate-200'}`}>
+              <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all ${isDark ? 'left-7' : 'left-1'}`} />
+            </button>
+          </div>
           <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="mt-4 p-5 bg-red-50 text-red-600 rounded-3xl font-bold text-xs">RESTAURAR APLICACIÓN</button>
           <button onClick={() => setShowSettings(false)} className={`mt-auto w-full py-5 bg-gradient-to-r ${activeTheme.from} ${activeTheme.to} text-white rounded-3xl font-bold flex items-center justify-center gap-3 shadow-xl`}><Save size={24} /> GUARDAR</button>
         </section>
