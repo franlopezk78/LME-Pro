@@ -6,6 +6,7 @@ export interface ShoppingItem {
   catColor: string;
   quantity: number;
   isFavorite: boolean;
+  boughtAt?: number; // Fecha de compra para la despensa
 }
 
 export interface CatalogProduct {
@@ -17,4 +18,11 @@ export interface CatalogCategory {
   c: string;
   col: string;
   items: CatalogProduct[];
+}
+
+export interface Recipe {
+  title: string;
+  description: string;
+  ingredients: string[];
+  missing: string[];
 }
