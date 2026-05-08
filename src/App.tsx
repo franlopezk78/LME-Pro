@@ -1,10 +1,106 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Share2, RefreshCw, ShoppingBasket, Edit3, ShoppingCart, Plus, Mic, Trash2, CheckCircle, ChevronDown, Settings, Brain, Save, Loader2, Trash } from 'lucide-react';
+import { 
+  Share2, RefreshCw, ShoppingBasket, Edit3, ShoppingCart, 
+  Plus, Mic, Trash2, CheckCircle, ChevronDown, 
+  Settings, Brain, Save, Loader2, Trash, 
+  Star, Minus, PlusCircle, GripVertical
+} from 'lucide-react';
 import type { ShoppingItem } from './types';
 import { CATALOG_DATA } from './constants';
 
+// Drag & Drop
+import {
+  DndContext, 
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+const SortableItem = ({ item, toggleItem, deleteItem, updateQuantity, toggleFavorite, mode }: any) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 'auto',
+  };
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style}
+      className={`group flex items-center gap-4 p-4 rounded-3xl glass-panel transition-all duration-300 ${isDragging ? 'shadow-2xl opacity-80 ring-2 ring-violet-500' : ''} ${item.checked ? 'opacity-40 scale-[0.98]' : 'hover:shadow-lg'}`}
+    >
+      {mode === 'edit' && (
+        <button {...attributes} {...listeners} className="cursor-grab text-slate-300 dark:text-slate-700 hover:text-slate-400">
+          <GripVertical size={20} />
+        </button>
+      )}
+      
+      <div 
+        onClick={() => toggleItem(item.id)}
+        className={`w-7 h-7 rounded-xl border-2 flex items-center justify-center transition-all duration-300 cursor-pointer ${item.checked ? 'bg-slate-400 border-slate-400 scale-90' : 'border-slate-300 dark:border-slate-600'}`}
+      >
+        {item.checked && <CheckCircle size={16} className="text-white" strokeWidth={3} />}
+      </div>
+
+      <div className="flex-1 min-w-0" onClick={() => toggleItem(item.id)}>
+        <p className={`text-[17px] font-semibold truncate transition-all duration-300 ${item.checked ? 'line-through text-slate-500' : ''}`}>
+          {item.text}
+        </p>
+        <div className="flex items-center gap-2 mt-0.5">
+          <span className="text-[10px] font-black uppercase tracking-wider opacity-60" style={{ color: item.catColor }}>{item.catName.split(' ')[1] || item.catName}</span>
+          {item.isFavorite && <Star size={10} className="fill-amber-400 text-amber-400" />}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 bg-slate-100/50 dark:bg-slate-800/50 rounded-2xl p-1">
+        <button onClick={() => updateQuantity(item.id, -1)} className="p-1 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-colors">
+          <Minus size={14} strokeWidth={3} className={item.quantity <= 1 ? 'opacity-20' : ''} />
+        </button>
+        <span className="text-sm font-bold w-4 text-center">{item.quantity}</span>
+        <button onClick={() => updateQuantity(item.id, 1)} className="p-1 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-colors text-violet-500">
+          <PlusCircle size={14} strokeWidth={3} />
+        </button>
+      </div>
+
+      {mode === 'edit' && (
+        <div className="flex items-center gap-1">
+          <button 
+            onClick={() => toggleFavorite(item.id)}
+            className={`p-2 transition-colors ${item.isFavorite ? 'text-amber-400' : 'text-slate-300 dark:text-slate-700'}`}
+          >
+            <Star size={18} className={item.isFavorite ? 'fill-amber-400' : ''} />
+          </button>
+          <button onClick={() => deleteItem(item.id)} className="p-2 text-slate-300 dark:text-slate-700 hover:text-red-500 transition-colors">
+            <Trash2 size={18} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const App: React.FC = () => {
-  const APP_VERSION = "5.0 - EviShop Premium";
+  const APP_VERSION = "6.0 - EviShop Pro Max";
   
   const [items, setItems] = useState<ShoppingItem[]>(() => {
     const saved = localStorage.getItem('lme_items_pro');
@@ -19,6 +115,11 @@ const App: React.FC = () => {
   const [transcript, setTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   const recognitionRef = useRef<any>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -52,27 +153,18 @@ const App: React.FC = () => {
     } catch (e) {}
   };
 
-  // Voice Logic (Extreme Single-Shot)
+  // Voice Logic
   useEffect(() => {
     const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRec) return;
 
     const recognition = new SpeechRec();
     recognition.lang = 'es-ES';
-    recognition.interimResults = false; // Desactivado total para evitar basura intermedia
+    recognition.interimResults = false;
     recognition.continuous = false;
 
-    recognition.onstart = () => {
-      setIsListening(true);
-      setTranscript('');
-      playBeep('start');
-    };
-
-    recognition.onresult = (e: any) => {
-      const result = e.results[0][0].transcript;
-      setTranscript(result);
-    };
-
+    recognition.onstart = () => { setIsListening(true); setTranscript(''); playBeep('start'); };
+    recognition.onresult = (e: any) => { setTranscript(e.results[0][0].transcript); };
     recognition.onerror = () => setIsListening(false);
     recognition.onend = () => setIsListening(false);
 
@@ -80,13 +172,10 @@ const App: React.FC = () => {
   }, []);
 
   const toggleListening = () => {
-    if (isListening) {
-      recognitionRef.current?.stop();
-    } else {
+    if (isListening) recognitionRef.current?.stop();
+    else {
       setTranscript('');
-      try {
-        recognitionRef.current?.start();
-      } catch (e) {
+      try { recognitionRef.current?.start(); } catch (e) {
         recognitionRef.current?.stop();
         setTimeout(() => recognitionRef.current?.start(), 100);
       }
@@ -112,13 +201,15 @@ const App: React.FC = () => {
     const clean = text.trim().charAt(0).toUpperCase() + text.trim().slice(1).toLowerCase();
     const info = category ? getCategoryInfo(category) : { name: "⚪ Varios", color: "#94a3b8" };
 
-    setItems(prev => [...prev, {
+    setItems(prev => [{
       id: Math.random().toString(36).substr(2, 9),
       text: clean,
       checked: false,
       catName: info.name,
-      catColor: info.color
-    }]);
+      catColor: info.color,
+      quantity: 1,
+      isFavorite: false
+    }, ...prev]);
     if (navigator.vibrate) navigator.vibrate(30);
   };
 
@@ -127,14 +218,10 @@ const App: React.FC = () => {
       processVoiceBasic(t);
       return;
     }
-
     setIsProcessing(true);
     try {
       const prompt = `Eres un asistente de lista de la compra. Tu trabajo es extraer TODOS los productos individuales del texto.
-      Reglas estrictas:
-      1. Si mencionan varios productos (ej: "tomates cebollas lechuga"), separalos en elementos distintos.
-      2. Si mencionan una receta, extrae sus ingredientes básicos.
-      3. Devuelve SOLO un JSON válido con este formato: {"items": [{"name": "producto", "category": "Categoría"}]}
+      Devuelve SOLO un JSON válido con este formato: {"items": [{"name": "producto", "category": "Categoría"}]}
       Categorías permitidas: Verduras, Frutas, Carne, Pescado, Lácteos, Charcutería, Despensa, Pan, Limpieza, Mascotas, Varios.
       Texto a analizar: "${t}"`;
 
@@ -156,17 +243,10 @@ const App: React.FC = () => {
       if (result.items && Array.isArray(result.items)) {
         result.items.forEach((i: any) => addItem(i.name, i.category));
       } else {
-        throw new Error("Formato IA incorrecto");
+        processVoiceBasic(t);
       }
     } catch (err: any) {
-      console.error(err);
       processVoiceBasic(t);
-      // Extraemos solo el mensaje de error real para que quepa en la pantalla
-      let msg = err.message || "Error desconocido";
-      if (msg.includes("API key not valid")) msg = "Llave incorrecta";
-      if (msg.includes("Unexpected token")) msg = "La IA se ha confundido al responder";
-      setError(`⚠️ IA: ${msg.substring(0, 40)}`);
-      setTimeout(() => setError(null), 4000);
     } finally {
       setIsProcessing(false);
       setTranscript('');
@@ -185,10 +265,7 @@ const App: React.FC = () => {
         if (index === 0) currentB.push(word);
         else {
           if (conn.includes(w) || conn.includes(words[index - 1].toLowerCase()) || w.length <= 2) currentB.push(word);
-          else {
-            addItem(currentB.join(" "));
-            currentB = [word];
-          }
+          else { addItem(currentB.join(" ")); currentB = [word]; }
         }
       });
       if (currentB.length > 0) addItem(currentB.join(" "));
@@ -205,40 +282,50 @@ const App: React.FC = () => {
     if (navigator.vibrate) navigator.vibrate([10, 30, 10]);
   };
 
+  const updateQuantity = (id: string, delta: number) => {
+    setItems(prev => prev.map(i => {
+      if (i.id === id) {
+        const newQty = Math.max(1, (i.quantity || 1) + delta);
+        return { ...i, quantity: newQty };
+      }
+      return i;
+    }));
+  };
+
+  const toggleFavorite = (id: string) => {
+    setItems(prev => prev.map(i => i.id === id ? { ...i, isFavorite: !i.isFavorite } : i));
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setItems((currentItems) => {
+        const oldIndex = currentItems.findIndex((i) => i.id === active.id);
+        const newIndex = currentItems.findIndex((i) => i.id === over.id);
+        return arrayMove(currentItems, oldIndex, newIndex);
+      });
+    }
+  };
+
   const shareWhatsApp = () => {
     const f = items.filter(i => !i.checked);
-    if (f.length === 0) {
-      setError("La lista está vacía");
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
-    const t = "🛒 *Lista de Los Mandaos de Evi*\n\n" + f.map(i => `• ${i.text}`).join('\n');
+    if (f.length === 0) return;
+    const t = "🛒 *EviShop Premium*\n\n" + f.map(i => `• ${i.quantity > 1 ? `[${i.quantity}] ` : ''}${i.text}`).join('\n');
     window.open("whatsapp://send?text=" + encodeURIComponent(t), '_blank');
   };
 
   const nukeCache = () => {
-    if (confirm("Esto borrará la caché y reiniciará la app para actualizarla. ¿Continuar?")) {
+    if (confirm("¿Limpiar todo?")) {
       localStorage.clear();
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(regs => {
-          for(let reg of regs) reg.unregister();
-        });
-      }
       window.location.reload();
     }
   };
 
-  const grouped = items.reduce((acc, item) => {
-    if (!acc[item.catName]) acc[item.catName] = [];
-    acc[item.catName].push(item);
-    return acc;
-  }, {} as Record<string, ShoppingItem[]>);
-
   return (
     <div className={`min-h-screen max-w-lg mx-auto relative flex flex-col font-sans ${mode === 'edit' ? 'edit-mode' : 'shop-mode'}`}>
-      <header className="p-6 glass-header sticky top-0 z-10 transition-all duration-300">
+      <header className="p-6 glass-header sticky top-0 z-40 transition-all duration-300">
         <div className="flex items-center justify-between gap-4">
-          <button onClick={() => { if(confirm("¿Borrar todo?")) setItems([]); }} className="p-2.5 rounded-2xl bg-slate-100/50 dark:bg-slate-800/50 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+          <button onClick={() => { if(confirm("¿Vaciar lista?")) setItems([]); }} className="p-2.5 rounded-2xl bg-slate-100/50 dark:bg-slate-800/50 text-slate-500">
             <RefreshCw size={20} strokeWidth={2.5} />
           </button>
           <div className="text-center flex-1 flex items-center justify-center gap-2">
@@ -251,20 +338,23 @@ const App: React.FC = () => {
             <button onClick={() => setShowSettings(!showSettings)} className={`p-2.5 rounded-2xl transition-all ${apiKey ? 'text-green-500 bg-green-500/10' : 'text-slate-400 bg-slate-100/50 dark:bg-slate-800/50'}`}>
               <Settings size={20} strokeWidth={2.5} />
             </button>
-            {mode === 'edit' && (
-              <button onClick={shareWhatsApp} className="p-2.5 rounded-2xl bg-green-500 text-white shadow-lg shadow-green-500/30 transition-transform active:scale-95">
-                <Share2 size={20} strokeWidth={2.5} />
-              </button>
-            )}
             <button onClick={() => setMode(mode === 'edit' ? 'shop' : 'edit')} className={`p-2.5 rounded-2xl transition-all shadow-lg active:scale-95 ${mode === 'edit' ? 'bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-violet-500/30' : 'bg-slate-200 dark:bg-slate-800 text-slate-500'}`}>
               {mode === 'edit' ? <ShoppingCart size={20} strokeWidth={2.5} /> : <Edit3 size={20} strokeWidth={2.5} />}
             </button>
           </div>
         </div>
+        {mode === 'shop' && (
+          <div className="mt-4 flex justify-between items-center px-4 py-2 bg-violet-500/10 rounded-2xl border border-violet-500/20">
+            <p className="text-xs font-bold text-violet-500 uppercase tracking-widest">{items.filter(i => i.checked).length} de {items.length} COMPRADOS</p>
+            {items.length > 0 && items.every(i => i.checked) && (
+              <button onClick={() => setItems(items.filter(i => !i.checked))} className="px-3 py-1 bg-violet-500 text-white rounded-lg text-[10px] font-black uppercase">¡LISTO!</button>
+            )}
+          </div>
+        )}
       </header>
 
       {showSettings && (
-        <section className="absolute inset-0 bg-white/90 dark:bg-[#0B0F19]/95 backdrop-blur-xl z-30 p-8 flex flex-col gap-6 animate-slide-up">
+        <section className="absolute inset-0 bg-white/95 dark:bg-[#0B0F19]/95 backdrop-blur-2xl z-50 p-8 flex flex-col gap-6 animate-slide-up">
           <div className="flex items-center gap-4 mt-4">
             <div className="p-4 rounded-3xl bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/30 text-white">
               <Brain size={32} />
@@ -274,38 +364,35 @@ const App: React.FC = () => {
               <p className="text-slate-500 font-medium">Configuración de IA</p>
             </div>
           </div>
-          
           <div className="space-y-3 mt-6">
             <label className="text-sm font-bold text-violet-500 uppercase tracking-widest">Llave Gemini (API Key)</label>
-            <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="Pega tu llave AIza..." className="w-full p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl outline-none focus:ring-4 ring-violet-500/20 shadow-sm transition-all" />
+            <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="AIza..." className="w-full p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl outline-none" />
           </div>
-
-          <button onClick={nukeCache} className="mt-6 flex items-center justify-center gap-2 p-5 bg-red-50 dark:bg-red-500/10 text-red-600 rounded-3xl font-bold text-sm border border-red-100 dark:border-red-500/20 transition-all active:scale-95">
+          <button onClick={nukeCache} className="mt-6 flex items-center justify-center gap-2 p-5 bg-red-50 dark:bg-red-500/10 text-red-600 rounded-3xl font-bold text-sm border border-red-100">
             <Trash size={20} /> RESTAURAR APLICACIÓN
           </button>
-
           <div className="mt-auto text-center space-y-6 pb-6">
-            <p className="text-xs text-slate-400 font-mono font-medium opacity-50">Core: {APP_VERSION}</p>
-            <button onClick={() => setShowSettings(false)} className="w-full py-5 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-3xl font-bold text-lg flex items-center justify-center gap-3 shadow-xl shadow-violet-500/30 active:scale-95 transition-all">
-              Guardar y Cerrar <Save size={24} />
+            <p className="text-[10px] text-slate-400 font-mono opacity-50">Core: {APP_VERSION}</p>
+            <button onClick={() => setShowSettings(false)} className="w-full py-5 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-3xl font-bold text-lg flex items-center justify-center gap-3 shadow-xl">
+              CERRAR AJUSTES <Save size={24} />
             </button>
           </div>
         </section>
       )}
 
       {isCatalogOpen && (
-        <section className="absolute inset-x-0 top-20 bottom-0 bg-white dark:bg-slate-900 z-20 p-4 overflow-y-auto pb-48">
-          <button onClick={() => setIsCatalogOpen(false)} className="w-full py-3 bg-violet-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 sticky top-0 z-10 mb-4">
-            Cerrar <ChevronDown />
+        <section className="absolute inset-x-0 top-20 bottom-0 bg-white/95 dark:bg-[#0B0F19]/95 backdrop-blur-2xl z-30 p-4 overflow-y-auto animate-slide-up pb-48">
+          <button onClick={() => setIsCatalogOpen(false)} className="w-full py-3 bg-violet-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 sticky top-0 z-10 mb-4 shadow-xl">
+            CERRAR CATÁLOGO <ChevronDown />
           </button>
           {CATALOG_DATA.map(cat => (
             <div key={cat.c} className="mb-6">
-              <h3 className="text-xs font-black text-slate-400 uppercase mb-2">{cat.c}</h3>
+              <h3 className="text-xs font-black text-slate-400 uppercase mb-3 pl-2 tracking-widest">{cat.c}</h3>
               <div className="grid grid-cols-3 gap-2">
                 {cat.items.map(i => (
-                  <button key={i.n} onClick={() => addItem(i.n)} className="flex flex-col items-center p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
+                  <button key={i.n} onClick={() => addItem(i.n)} className="flex flex-col items-center p-3 glass-panel rounded-3xl active:scale-95 transition-transform">
                     <span className="text-2xl">{i.e}</span>
-                    <span className="text-[10px] text-center font-medium">{i.n}</span>
+                    <span className="text-[10px] text-center font-bold mt-1">{i.n}</span>
                   </button>
                 ))}
               </div>
@@ -316,73 +403,82 @@ const App: React.FC = () => {
 
       <main className="flex-1 p-6 pb-48 overflow-y-auto">
         {items.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-6 opacity-40 animate-fade-in">
-            <div className="p-8 rounded-full bg-slate-200/50 dark:bg-slate-800/50">
+          <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-6 opacity-30 animate-fade-in">
+            <div className="p-8 rounded-full bg-slate-200 dark:bg-slate-800">
               <ShoppingBasket size={80} strokeWidth={1} />
             </div>
-            <p className="text-xl font-medium tracking-tight">Tu cesta está vacía</p>
+            <p className="text-xl font-bold">Tu cesta está vacía</p>
           </div>
         ) : (
-          Object.keys(grouped).sort().map(cat => (
-            <div key={cat} className="mb-8 animate-slide-up">
-              <h2 className="text-[11px] font-black uppercase tracking-[0.2em] mb-4 pl-4 border-l-4 opacity-80" style={{ borderLeftColor: grouped[cat][0].catColor }}>{cat}</h2>
-              <div className="space-y-3">
-                {grouped[cat].map(item => (
-                  <div key={item.id} onClick={() => toggleItem(item.id)} className={`group flex items-center gap-4 p-4 rounded-3xl glass-panel transition-all duration-300 active:scale-[0.98] ${item.checked ? 'opacity-40 scale-[0.98]' : 'hover:shadow-2xl'}`}>
-                    <div className={`w-7 h-7 rounded-xl border-2 flex items-center justify-center transition-all duration-300 ${item.checked ? 'bg-slate-400 border-slate-400 scale-90' : 'border-slate-300 dark:border-slate-600'}`}>
-                      {item.checked && <CheckCircle size={16} className="text-white" strokeWidth={3} />}
-                    </div>
-                    <span className={`flex-1 text-[17px] font-medium transition-all duration-300 ${item.checked ? 'line-through text-slate-500' : ''}`}>{item.text}</span>
-                    <button onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }} className="p-2 text-slate-300 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 transition-colors">
-                      <Trash2 size={20} />
-                    </button>
-                  </div>
+          <DndContext 
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="space-y-3">
+              <SortableContext 
+                items={items.map(i => i.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {items.map(item => (
+                  <SortableItem 
+                    key={item.id} 
+                    item={item} 
+                    toggleItem={toggleItem} 
+                    deleteItem={deleteItem}
+                    updateQuantity={updateQuantity}
+                    toggleFavorite={toggleFavorite}
+                    mode={mode}
+                  />
                 ))}
-              </div>
+              </SortableContext>
             </div>
-          ))
+          </DndContext>
         )}
       </main>
 
       {isListening && (
-        <div className="fixed inset-0 bg-slate-900/95 z-50 flex items-center justify-center p-8">
-          <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 w-full max-w-xs text-center flex flex-col items-center gap-4">
-            <div className="bg-red-500 p-6 rounded-full animate-pulse shadow-2xl shadow-red-500/50"><Mic size={40} className="text-white" /></div>
-            <p className="font-medium text-slate-400 italic">"{transcript || 'Escuchando...'}"</p>
-            <button onClick={toggleListening} className="px-8 py-3 bg-red-500 text-white rounded-2xl font-bold">PARAR</button>
+        <div className="fixed inset-0 bg-slate-900/95 z-50 flex items-center justify-center p-8 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-[3rem] p-8 w-full max-w-xs text-center flex flex-col items-center gap-6 shadow-2xl">
+            <div className="bg-red-500 p-8 rounded-full animate-pulse shadow-2xl shadow-red-500/50">
+              <Mic size={48} className="text-white" />
+            </div>
+            <p className="text-xl font-bold text-slate-400 italic">"{transcript || 'Dime qué comprar...'}"</p>
+            <button onClick={toggleListening} className="w-full py-4 bg-red-500 text-white rounded-3xl font-black text-lg">PARAR</button>
           </div>
         </div>
       )}
 
       {isProcessing && (
-        <div className="fixed inset-0 bg-violet-500/10 backdrop-blur-[1px] z-40 flex items-center justify-center">
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-2xl flex items-center gap-4">
-            <Loader2 className="w-6 h-6 text-violet-500 animate-spin" />
-            <p className="font-bold text-violet-500">Evi está pensando...</p>
+        <div className="fixed inset-0 bg-violet-500/20 backdrop-blur-md z-50 flex items-center justify-center">
+          <div className="bg-white dark:bg-slate-800 p-8 rounded-[3rem] shadow-2xl flex flex-col items-center gap-4">
+            <Loader2 className="w-10 h-10 text-violet-500 animate-spin" strokeWidth={3} />
+            <p className="font-black text-violet-500 uppercase tracking-widest text-sm">Procesando...</p>
           </div>
         </div>
       )}
 
       {mode === 'edit' && (
-        <nav className="fixed bottom-0 inset-x-0 p-6 flex flex-col items-center gap-6 pointer-events-none z-20">
+        <nav className="fixed bottom-0 inset-x-0 p-6 flex flex-col items-center gap-6 pointer-events-none z-40">
           <div className="w-full max-w-sm flex gap-3 pointer-events-auto">
-            <button onClick={() => setIsCatalogOpen(!isCatalogOpen)} className={`p-4 rounded-3xl glass-panel shadow-xl transition-all active:scale-95 ${isCatalogOpen ? 'bg-violet-500 text-white border-violet-500' : 'text-slate-500'}`}>
+            <button onClick={() => setIsCatalogOpen(!isCatalogOpen)} className={`p-4 rounded-3xl glass-panel shadow-2xl transition-all ${isCatalogOpen ? 'bg-violet-500 text-white' : 'text-slate-500'}`}>
               <ShoppingCart size={24} />
             </button>
-            <div className="flex-1 flex glass-panel rounded-3xl overflow-hidden shadow-xl pl-2">
-              <input type="text" value={manualInput} onChange={(e) => setManualInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && (addItem(manualInput), setManualInput(''))} placeholder="Añadir producto..." className="flex-1 px-4 bg-transparent outline-none font-medium placeholder:text-slate-400" />
-              <button onClick={() => { addItem(manualInput); setManualInput(''); }} className="p-4 bg-slate-100 dark:bg-slate-800 text-violet-500 hover:bg-violet-500 hover:text-white transition-colors">
-                <Plus size={24} strokeWidth={3} />
-              </button>
+            <div className="flex-1 flex glass-panel rounded-3xl overflow-hidden shadow-2xl pl-2">
+              <input type="text" value={manualInput} onChange={(e) => setManualInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && (addItem(manualInput), setManualInput(''))} placeholder="¿Qué quieres hoy?" className="flex-1 px-4 bg-transparent outline-none font-bold" />
+              <button onClick={() => { addItem(manualInput); setManualInput(''); }} className="p-4 bg-slate-100 dark:bg-slate-800 text-violet-500"><Plus size={24} strokeWidth={3} /></button>
             </div>
+            <button onClick={shareWhatsApp} className="p-4 rounded-3xl bg-green-500 text-white shadow-2xl">
+              <Share2 size={24} strokeWidth={2.5} />
+            </button>
           </div>
-          <button onClick={toggleListening} className={`w-20 h-20 rounded-[2rem] flex items-center justify-center shadow-2xl pointer-events-auto transition-all duration-300 active:scale-90 ${isListening ? 'bg-red-500 shadow-red-500/50 scale-110' : 'bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-violet-500/40 hover:-translate-y-1'}`}>
-            <Mic size={32} className="text-white" />
+          <button onClick={toggleListening} className={`w-20 h-20 rounded-[2.5rem] flex items-center justify-center shadow-2xl pointer-events-auto transition-all duration-300 active:scale-90 ${isListening ? 'bg-red-500' : 'bg-gradient-to-br from-violet-500 to-fuchsia-500'}`}>
+            <Mic size={36} className="text-white" />
           </button>
         </nav>
       )}
 
-      {error && <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-2xl font-bold shadow-2xl z-[60]">{error}</div>}
+      {error && <div className="fixed top-24 left-1/2 -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-2xl font-bold shadow-2xl z-[60] animate-bounce">{error}</div>}
     </div>
   );
 };

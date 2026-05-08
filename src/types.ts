@@ -4,6 +4,8 @@ export interface ShoppingItem {
   checked: boolean;
   catName: string;
   catColor: string;
+  quantity: number;
+  isFavorite: boolean;
 }
 
 export interface CatalogProduct {
