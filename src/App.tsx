@@ -3,7 +3,7 @@ import {
   Share2, RefreshCw, ShoppingBasket, Edit3, ShoppingCart, 
   Plus, Mic, Trash2, CheckCircle, ChevronDown, 
   Settings, Brain, Save, Loader2, 
-  Star, Minus, PlusCircle, GripVertical, Camera
+  Star, Minus, PlusCircle, GripVertical, Camera, FolderOpen, Download
 } from 'lucide-react';
 import type { ShoppingItem } from './types';
 import { CATALOG_DATA } from './constants';
@@ -18,15 +18,15 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-const SortableItem = ({ item, toggleItem, deleteItem, updateQuantity, toggleFavorite, activeTheme }: any) => {
+const SortableItem = ({ item, toggleItem, deleteItem, updateQuantity, toggleFavorite, activeTheme, mode }: any) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
   const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 50 : 'auto' };
 
   return (
     <div ref={setNodeRef} style={style} className={`group flex flex-col gap-3 p-5 rounded-[2.5rem] glass-panel transition-all duration-300 ${isDragging ? 'shadow-2xl opacity-80 ring-2 ring-violet-500 scale-105' : ''} ${item.checked ? 'opacity-40 scale-[0.98]' : 'hover:shadow-lg'}`}>
       <div className="flex items-center gap-4">
-        <div onClick={() => toggleItem(item.id)} className={`w-8 h-8 rounded-2xl border-2 flex items-center justify-center transition-all duration-300 cursor-pointer shrink-0 ${item.checked ? 'bg-slate-400 border-slate-400' : 'border-slate-300 dark:border-slate-600'}`}>
-          {item.checked && <CheckCircle size={18} className="text-white" strokeWidth={3} />}
+        <div onClick={() => toggleItem(item.id)} className={`w-10 h-10 rounded-2xl border-2 flex items-center justify-center transition-all duration-300 cursor-pointer shrink-0 ${item.checked ? 'bg-slate-400 border-slate-400' : 'border-slate-300 dark:border-slate-600'}`}>
+          {item.checked && <CheckCircle size={24} className="text-white" strokeWidth={3} />}
         </div>
         <div className="flex-1 min-w-0" onClick={() => toggleItem(item.id)}>
           <div className="flex flex-col">
@@ -36,34 +36,38 @@ const SortableItem = ({ item, toggleItem, deleteItem, updateQuantity, toggleFavo
             {item.price && (
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{item.price.toFixed(2)}€</span>
-                {item.priceTrend === 'up' && <span className="text-[10px] font-black text-red-500 flex items-center animate-pulse">▲ SUBE</span>}
-                {item.priceTrend === 'down' && <span className="text-[10px] font-black text-green-500 flex items-center animate-pulse">▼ BAJA</span>}
+                {item.priceTrend === 'up' && <span className="text-[10px] font-black text-red-500 flex items-center animate-pulse">▲</span>}
+                {item.priceTrend === 'down' && <span className="text-[10px] font-black text-green-500 flex items-center animate-pulse">▼</span>}
               </div>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2 bg-slate-100/80 dark:bg-slate-800/80 rounded-2xl p-1 shrink-0">
-          <button onClick={() => updateQuantity(item.id, -1)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-xl transition-colors"><Minus size={16} strokeWidth={3} className={item.quantity <= 1 ? 'opacity-20' : ''} /></button>
-          <span className="text-base font-black w-6 text-center">{item.quantity}</span>
-          <button onClick={() => updateQuantity(item.id, 1)} className={`p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-xl transition-colors ${activeTheme.text}`}><PlusCircle size={16} strokeWidth={3} /></button>
-        </div>
+        {mode === 'edit' && (
+          <div className="flex items-center gap-2 bg-slate-100/80 dark:bg-slate-800/80 rounded-2xl p-1 shrink-0">
+            <button onClick={() => updateQuantity(item.id, -1)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-xl transition-colors"><Minus size={16} strokeWidth={3} /></button>
+            <span className="text-base font-black w-6 text-center">{item.quantity}</span>
+            <button onClick={() => updateQuantity(item.id, 1)} className={`p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-xl transition-colors ${activeTheme.text}`}><PlusCircle size={16} strokeWidth={3} /></button>
+          </div>
+        )}
       </div>
-      <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800/50">
-        <div className="flex items-center gap-3">
-          <button {...attributes} {...listeners} className="text-slate-300 dark:text-slate-600"><GripVertical size={18} /></button>
-          <span className="text-[10px] font-black uppercase tracking-[0.15em] px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800" style={{ color: item.catColor }}>{item.catName}</span>
+      {mode === 'edit' && (
+        <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800/50">
+          <div className="flex items-center gap-3">
+            <button {...attributes} {...listeners} className="text-slate-300 dark:text-slate-600"><GripVertical size={18} /></button>
+            <span className="text-[10px] font-black uppercase tracking-[0.15em] px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800" style={{ color: item.catColor }}>{item.catName}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <button onClick={() => toggleFavorite(item.id)} className={`p-2 rounded-xl transition-colors ${item.isFavorite ? 'bg-amber-400/10 text-amber-500' : 'text-slate-300 dark:text-slate-600'}`}><Star size={20} className={item.isFavorite ? 'fill-amber-500' : ''} /></button>
+            <button onClick={() => deleteItem(item.id)} className="p-2 rounded-xl text-slate-300 dark:text-slate-600 hover:bg-red-500/10 hover:text-red-500 transition-colors"><Trash2 size={20} /></button>
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          <button onClick={() => toggleFavorite(item.id)} className={`p-2 rounded-xl transition-colors ${item.isFavorite ? 'bg-amber-400/10 text-amber-500' : 'text-slate-300 dark:text-slate-600'}`}><Star size={20} className={item.isFavorite ? 'fill-amber-500' : ''} /></button>
-          <button onClick={() => deleteItem(item.id)} className="p-2 rounded-xl text-slate-300 dark:text-slate-600 hover:bg-red-500/10 hover:text-red-500 transition-colors"><Trash2 size={20} /></button>
-        </div>
-      </div>
+      )}
     </div>
   );
 };
 
 const App: React.FC = () => {
-  const APP_VERSION = "7.2 - Dark & Fixed";
+  const APP_VERSION = "8.0 - Pro Manager";
   
   const [items, setItems] = useState<ShoppingItem[]>(() => JSON.parse(localStorage.getItem('lme_items_pro') || '[]'));
   const [apiKey, setApiKey] = useState<string>(localStorage.getItem('lme_gemini_key') || '');
@@ -78,6 +82,7 @@ const App: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [priceHistory, setPriceHistory] = useState<Record<string, number>>(() => JSON.parse(localStorage.getItem('lme_price_history') || '{}'));
   const [isDark, setIsDark] = useState(() => localStorage.getItem('lme_dark_mode') === 'true');
+  const [savedLists, setSavedLists] = useState<any[]>(() => JSON.parse(localStorage.getItem('lme_saved_lists') || '[]'));
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
   const recognitionRef = useRef<any>(null);
@@ -87,6 +92,7 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem('lme_gemini_key', apiKey.trim()); }, [apiKey]);
   useEffect(() => { localStorage.setItem('lme_theme_color', themeColor); }, [themeColor]);
   useEffect(() => { localStorage.setItem('lme_price_history', JSON.stringify(priceHistory)); }, [priceHistory]);
+  useEffect(() => { localStorage.setItem('lme_saved_lists', JSON.stringify(savedLists)); }, [savedLists]);
   
   useEffect(() => {
     localStorage.setItem('lme_dark_mode', isDark.toString());
@@ -264,6 +270,30 @@ const App: React.FC = () => {
     window.open("whatsapp://send?text=" + encodeURIComponent(t), '_blank');
   };
 
+  const saveCurrentList = () => {
+    if (items.length === 0) return;
+    const name = prompt("Nombre de la lista (ej: Compra Mensual):");
+    if (!name) return;
+    const newList = { id: Date.now(), name, items: [...items] };
+    setSavedLists(prev => [newList, ...prev]);
+    setError("¡Lista guardada!");
+    setTimeout(() => setError(null), 2000);
+  };
+
+  const loadList = (listItems: ShoppingItem[]) => {
+    if (confirm("¿Cargar esta lista? Se borrará la actual.")) {
+      setItems(listItems);
+      setIsCatalogOpen(false);
+      setShowSettings(false);
+    }
+  };
+
+  const deleteSavedList = (id: number) => {
+    if (confirm("¿Borrar esta lista guardada?")) {
+      setSavedLists(prev => prev.filter(l => l.id !== id));
+    }
+  };
+
   const sortedItems = [...items].sort((a, b) => {
     if (a.checked !== b.checked) return a.checked ? 1 : -1;
     return 0;
@@ -279,7 +309,7 @@ const App: React.FC = () => {
           </button>
           
           <button 
-            onClick={() => { setShowSettings(false); setIsCatalogOpen(false); }}
+            onClick={() => { setShowSettings(false); setIsCatalogOpen(false); setMode('edit'); }}
             className="text-center flex-1 active:scale-95 transition-transform"
           >
             <h1 className="text-2xl font-extrabold tracking-tight dark:text-white">Evi<span className={`text-transparent bg-clip-text bg-gradient-to-r ${activeTheme.from} ${activeTheme.to}`}>Shop</span></h1>
@@ -287,14 +317,14 @@ const App: React.FC = () => {
 
           <div className="flex gap-2 justify-end">
             <button onClick={() => setShowSettings(!showSettings)} className="p-2.5 rounded-2xl bg-white dark:bg-slate-800 text-slate-500 shadow-lg"><Settings size={20} /></button>
-            <button onClick={() => setMode(mode === 'edit' ? 'shop' : 'edit')} className={`p-2.5 rounded-2xl shadow-lg transition-all ${mode === 'edit' ? `bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} text-white` : 'bg-slate-200 dark:bg-slate-800 text-slate-500'}`}>
+            <button onClick={() => setMode(mode === 'edit' ? 'shop' : 'edit')} className={`p-2.5 rounded-2xl shadow-lg transition-all ${mode === 'shop' ? `bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} text-white` : 'bg-slate-200 dark:bg-slate-800 text-slate-500'}`}>
               {mode === 'edit' ? <ShoppingCart size={20} /> : <Edit3 size={20} />}
             </button>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 p-6 pb-48 overflow-y-auto">
+      <main className={`flex-1 p-6 overflow-y-auto ${mode === 'edit' ? 'pb-48' : 'pb-24'}`}>
         {items.length === 0 ? <div className="h-full flex flex-col items-center justify-center text-slate-300 dark:text-slate-700 opacity-30 gap-4"><ShoppingBasket size={80} /><p className="text-xl font-bold">Cesta vacía</p></div> : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e: DragEndEvent) => { 
             const { active, over } = e;
@@ -307,7 +337,7 @@ const App: React.FC = () => {
             <div className="space-y-3">
               <SortableContext items={sortedItems.map(i => i.id)} strategy={verticalListSortingStrategy}>
                 {sortedItems.map(item => (
-                  <SortableItem key={item.id} item={item} toggleItem={(id: string) => setItems(prev => prev.map(i => i.id === id ? { ...i, checked: !i.checked } : i))} deleteItem={(id: string) => setItems(prev => prev.filter(i => i.id !== id))} updateQuantity={(id: string, d: number) => setItems(prev => prev.map(i => i.id === id ? { ...i, quantity: Math.max(1, (i.quantity || 1) + d) } : i))} toggleFavorite={(id: string) => setItems(prev => prev.map(i => i.id === id ? { ...i, isFavorite: !i.isFavorite } : i))} activeTheme={activeTheme} />
+                  <SortableItem key={item.id} item={item} toggleItem={(id: string) => setItems(prev => prev.map(i => i.id === id ? { ...i, checked: !i.checked } : i))} deleteItem={(id: string) => setItems(prev => prev.filter(i => i.id !== id))} updateQuantity={(id: string, d: number) => setItems(prev => prev.map(i => i.id === id ? { ...i, quantity: Math.max(1, (i.quantity || 1) + d) } : i))} toggleFavorite={(id: string) => setItems(prev => prev.map(i => i.id === id ? { ...i, isFavorite: !i.isFavorite } : i))} activeTheme={activeTheme} mode={mode} />
                 ))}
               </SortableContext>
             </div>
@@ -325,20 +355,22 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <nav className="fixed bottom-0 inset-x-0 p-6 flex flex-col items-center gap-6 pointer-events-none z-40">
-        <div className="w-full max-w-sm flex gap-3 pointer-events-auto">
-          <button onClick={() => setIsCatalogOpen(!isCatalogOpen)} className={`p-4 rounded-3xl glass-panel shadow-2xl transition-all ${isCatalogOpen ? activeTheme.bg + ' text-white border-0' : 'text-slate-500'}`}><ShoppingCart size={24} /></button>
-          <div className="flex-1 flex glass-panel rounded-3xl overflow-hidden shadow-2xl pl-2">
-            <input type="text" value={manualInput} onChange={(e) => setManualInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && (addItem(manualInput), setManualInput(''))} placeholder="¿Qué compras?" className="flex-1 px-4 bg-transparent outline-none font-bold dark:text-white" />
-            <button onClick={() => { addItem(manualInput); setManualInput(''); }} className={`p-4 bg-slate-100 dark:bg-slate-800 ${activeTheme.text}`}><Plus size={24} /></button>
+      {mode === 'edit' && (
+        <nav className="fixed bottom-0 inset-x-0 p-6 flex flex-col items-center gap-6 pointer-events-none z-40">
+          <div className="w-full max-w-sm flex gap-3 pointer-events-auto">
+            <button onClick={() => setIsCatalogOpen(!isCatalogOpen)} className={`p-4 rounded-3xl glass-panel shadow-2xl transition-all ${isCatalogOpen ? activeTheme.bg + ' text-white border-0' : 'text-slate-500'}`}><ShoppingCart size={24} /></button>
+            <div className="flex-1 flex glass-panel rounded-3xl overflow-hidden shadow-2xl pl-2">
+              <input type="text" value={manualInput} onChange={(e) => setManualInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && (addItem(manualInput), setManualInput(''))} placeholder="¿Qué compras?" className="flex-1 px-4 bg-transparent outline-none font-bold dark:text-white" />
+              <button onClick={() => { addItem(manualInput); setManualInput(''); }} className={`p-4 bg-slate-100 dark:bg-slate-800 ${activeTheme.text}`}><Plus size={24} /></button>
+            </div>
           </div>
-        </div>
-        <div className="flex gap-4 pointer-events-auto">
-          <button onClick={() => { if(confirm("¿Vaciar?")) setItems([]); }} className="p-4 rounded-3xl glass-panel text-slate-500 shadow-xl"><RefreshCw size={24} /></button>
-          <button onClick={toggleListening} className={`w-20 h-20 rounded-[2.5rem] flex items-center justify-center shadow-2xl transition-all ${isListening ? 'bg-red-500' : `bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} ${activeTheme.shadow}`}`}><Mic size={36} className="text-white" /></button>
-          <button onClick={shareWhatsApp} className="p-4 rounded-3xl bg-green-500 text-white shadow-xl"><Share2 size={24} /></button>
-        </div>
-      </nav>
+          <div className="flex gap-4 pointer-events-auto">
+            <button onClick={() => { if(confirm("¿Vaciar?")) setItems([]); }} className="p-4 rounded-3xl glass-panel text-slate-500 shadow-xl"><RefreshCw size={24} /></button>
+            <button onClick={toggleListening} className={`w-20 h-20 rounded-[2.5rem] flex items-center justify-center shadow-2xl transition-all ${isListening ? 'bg-red-500' : `bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} ${activeTheme.shadow}`}`}><Mic size={36} className="text-white" /></button>
+            <button onClick={shareWhatsApp} className="p-4 rounded-3xl bg-green-500 text-white shadow-xl"><Share2 size={24} /></button>
+          </div>
+        </nav>
+      )}
 
       {showSettings && (
         <section className="absolute inset-0 bg-white/95 dark:bg-[#0B0F19]/95 backdrop-blur-2xl z-[80] p-8 flex flex-col gap-6 animate-slide-up overflow-y-auto">
@@ -346,8 +378,28 @@ const App: React.FC = () => {
             <div className={`p-4 rounded-3xl bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} shadow-lg ${activeTheme.shadow} text-white`}><Brain size={32} /></div>
             <div><h2 className="text-3xl font-bold dark:text-white">EviShop Pro</h2><p className="text-slate-500 font-medium">v{APP_VERSION}</p></div>
           </div>
-          <div className="space-y-2"><label className="text-xs font-black uppercase text-slate-400">Gemini API Key</label><input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="AIza..." className="w-full p-5 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 dark:text-white" /></div>
-          <div className="space-y-2"><label className="text-xs font-black uppercase text-slate-400">Color App</label><div className="flex justify-between gap-2 p-4 bg-white dark:bg-slate-800 rounded-3xl border dark:border-slate-700">{['violet', 'blue', 'emerald', 'rose', 'amber'].map(t => <button key={t} onClick={() => setThemeColor(t)} className={`w-10 h-10 rounded-full bg-gradient-to-br ${themes[t].from} ${themes[t].to} ${themeColor === t ? 'ring-4 ring-slate-200 dark:ring-slate-600' : ''}`} />)}</div></div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border dark:border-slate-700 flex flex-col gap-4 shadow-sm">
+            <h3 className="text-xs font-black uppercase text-slate-400 tracking-widest flex items-center gap-2"><FolderOpen size={14} /> Gestión de Listas</h3>
+            <button onClick={saveCurrentList} className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-bold text-white shadow-lg bg-gradient-to-r ${activeTheme.from} ${activeTheme.to}`}><Save size={20} /> GUARDAR LISTA ACTUAL</button>
+            
+            <div className="space-y-3 mt-2">
+              {savedLists.map(list => (
+                <div key={list.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border dark:border-slate-800">
+                  <div className="flex-1 cursor-pointer" onClick={() => loadList(list.items)}>
+                    <p className="font-bold text-sm dark:text-white">{list.name}</p>
+                    <p className="text-[10px] text-slate-500">{list.items.length} productos</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => loadList(list.items)} className={`p-2 rounded-xl bg-white dark:bg-slate-800 ${activeTheme.text} shadow-sm border dark:border-slate-700`}><Download size={18} /></button>
+                    <button onClick={() => deleteSavedList(list.id)} className="p-2 rounded-xl bg-white dark:bg-slate-800 text-red-500 shadow-sm border dark:border-slate-700"><Trash2 size={18} /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2"><label className="text-xs font-black uppercase text-slate-400">Gemini API Key</label><input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="AIza..." className="w-full p-5 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 dark:text-white outline-none" /></div>
           
           <div className="flex items-center justify-between p-5 bg-white dark:bg-slate-800 rounded-3xl border dark:border-slate-700">
             <span className="text-sm font-bold dark:text-white">Modo Oscuro</span>
@@ -356,8 +408,8 @@ const App: React.FC = () => {
             </button>
           </div>
 
-          <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="mt-4 p-5 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-3xl font-bold text-xs">RESTAURAR APLICACIÓN</button>
-          <button onClick={() => setShowSettings(false)} className={`mt-auto w-full py-5 bg-gradient-to-r ${activeTheme.from} ${activeTheme.to} text-white rounded-3xl font-bold flex items-center justify-center gap-3 shadow-xl`}><Save size={24} /> GUARDAR</button>
+          <button onClick={() => { if(confirm("¿Seguro? Se borrará TODO.")) { localStorage.clear(); window.location.reload(); } }} className="mt-4 p-5 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-3xl font-bold text-xs">RESTAURAR APLICACIÓN</button>
+          <button onClick={() => setShowSettings(false)} className={`mt-auto w-full py-5 bg-gradient-to-r ${activeTheme.from} ${activeTheme.to} text-white rounded-3xl font-bold flex items-center justify-center gap-3 shadow-xl`}><Save size={24} /> VOLVER A LA COMPRA</button>
         </section>
       )}
 
