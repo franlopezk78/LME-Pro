@@ -3,9 +3,9 @@ import {
   Share2, RefreshCw, ShoppingBasket, Edit3, ShoppingCart, 
   Plus, Mic, Trash2, CheckCircle, ChevronDown, 
   Settings, Brain, Save, Loader2, Trash, 
-  Star, Minus, PlusCircle, GripVertical
+  Star, Minus, PlusCircle, GripVertical, ChefHat
 } from 'lucide-react';
-import type { ShoppingItem } from './types';
+import type { ShoppingItem, Recipe } from './types';
 import { CATALOG_DATA } from './constants';
 
 // Drag & Drop
@@ -123,6 +123,7 @@ const App: React.FC = () => {
   const [transcript, setTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [chefRecipe, setChefRecipe] = useState<Recipe | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -294,6 +295,36 @@ const App: React.FC = () => {
     });
   };
 
+  const askChef = async () => {
+    if (!apiKey || items.length === 0) return;
+    setIsProcessing(true);
+    try {
+      const activeItems = items.filter(i => !i.checked).map(i => `${i.quantity}x ${i.text}`).join(", ");
+      const prompt = `Actúa como un chef creativo. Tengo estos ingredientes en mi lista: ${activeItems}. 
+      Sugiere UNA receta deliciosa que pueda hacer. Devuelve SOLO un JSON con este formato:
+      {"title": "Nombre de la receta", "description": "Breve explicación de los pasos", "ingredients": ["los que ya tengo"], "missing": ["lo que me faltaría comprar"]}
+      Sé conciso y sugerente.`;
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey.trim()}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { response_mime_type: "application/json" }
+        })
+      });
+
+      const data = await response.json();
+      const textResponse = data.candidates[0].content.parts[0].text;
+      setChefRecipe(JSON.parse(textResponse.trim()));
+    } catch (err: any) {
+      setError("El Chef está descansando ahora mismo...");
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const toggleItem = (id: string) => {
     setItems(prev => prev.map(i => i.id === id ? { ...i, checked: !i.checked } : i));
     if (navigator.vibrate) navigator.vibrate(20);
@@ -351,8 +382,8 @@ const App: React.FC = () => {
     <div className={`min-h-screen max-w-lg mx-auto relative flex flex-col font-sans ${mode === 'edit' ? 'edit-mode' : 'shop-mode'}`}>
       <header className="p-6 glass-header sticky top-0 z-40 transition-all duration-300">
         <div className="flex items-center justify-between gap-4">
-          <button onClick={() => { if(confirm("¿Vaciar lista?")) setItems([]); }} className="p-2.5 rounded-2xl bg-slate-100/50 dark:bg-slate-800/50 text-slate-500">
-            <RefreshCw size={20} strokeWidth={2.5} />
+          <button onClick={askChef} className={`p-2.5 rounded-2xl bg-white dark:bg-slate-800 shadow-lg ${activeTheme.text} active:scale-90 transition-transform`}>
+            <ChefHat size={22} strokeWidth={2.5} />
           </button>
           <div className="text-center flex-1 flex items-center justify-center gap-2">
             <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} flex items-center justify-center shadow-lg ${activeTheme.shadow}`}>
@@ -482,6 +513,58 @@ const App: React.FC = () => {
         )}
       </main>
 
+      {chefRecipe && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-center justify-center p-6">
+          <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] p-8 w-full max-h-[80vh] overflow-y-auto relative animate-slide-up shadow-2xl">
+            <button onClick={() => setChefRecipe(null)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 transition-colors">
+              ✕
+            </button>
+            <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} flex items-center justify-center text-white shadow-lg mb-6`}>
+              <ChefHat size={32} />
+            </div>
+            <h2 className={`text-2xl font-black mb-2 uppercase tracking-tight ${activeTheme.text}`}>{chefRecipe.title}</h2>
+            <p className="text-sm text-slate-500 mb-8 font-medium leading-relaxed">{chefRecipe.description}</p>
+            
+            <div className="space-y-6">
+              <div>
+                <p className="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-[0.2em]">Ingredientes que tienes</p>
+                <div className="flex flex-wrap gap-2">
+                  {chefRecipe.ingredients.map(i => (
+                    <span key={i} className="px-3 py-1.5 bg-green-500/10 text-green-600 rounded-xl text-xs font-bold border border-green-500/20">
+                      ✓ {i}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              
+              {chefRecipe.missing.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-[0.2em]">Lo que te falta</p>
+                  <div className="flex flex-wrap gap-2">
+                    {chefRecipe.missing.map(i => (
+                      <button 
+                        key={i} 
+                        onClick={() => { addItem(i); setChefRecipe(null); }}
+                        className="px-3 py-1.5 bg-red-500/10 text-red-600 rounded-xl text-xs font-bold border border-red-500/20 active:scale-95 transition-transform"
+                      >
+                        + {i}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <button 
+              onClick={() => setChefRecipe(null)}
+              className={`w-full mt-10 py-4 rounded-2xl bg-gradient-to-r ${activeTheme.from} ${activeTheme.to} text-white font-black uppercase tracking-widest shadow-lg ${activeTheme.shadow}`}
+            >
+              ¡ENTENDIDO!
+            </button>
+          </div>
+        </div>
+      )}
+
       {isListening && (
         <div className="fixed inset-0 bg-slate-900/95 z-50 flex items-center justify-center p-8 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-800 rounded-[3rem] p-8 w-full max-w-xs text-center flex flex-col items-center gap-6 shadow-2xl">
@@ -517,9 +600,17 @@ const App: React.FC = () => {
               <Share2 size={24} strokeWidth={2.5} />
             </button>
           </div>
-          <button onClick={toggleListening} className={`w-20 h-20 rounded-[2.5rem] flex items-center justify-center shadow-2xl pointer-events-auto transition-all duration-300 active:scale-90 ${isListening ? 'bg-red-500' : `bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} ${activeTheme.shadow}`}`}>
-            <Mic size={36} className="text-white" />
-          </button>
+          <div className="flex gap-4 pointer-events-auto">
+            <button onClick={() => { if(confirm("¿Vaciar lista?")) setItems([]); }} className="p-4 rounded-3xl glass-panel text-slate-500 shadow-xl transition-all active:scale-90">
+              <RefreshCw size={24} />
+            </button>
+            <button onClick={toggleListening} className={`w-20 h-20 rounded-[2.5rem] flex items-center justify-center shadow-2xl pointer-events-auto transition-all duration-300 active:scale-90 ${isListening ? 'bg-red-500' : `bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} ${activeTheme.shadow}`}`}>
+              <Mic size={36} className="text-white" />
+            </button>
+            <button onClick={shareWhatsApp} className="p-4 rounded-3xl bg-green-500 text-white shadow-xl transition-all active:scale-90">
+              <Share2 size={24} strokeWidth={2.5} />
+            </button>
+          </div>
         </nav>
       )}
 
