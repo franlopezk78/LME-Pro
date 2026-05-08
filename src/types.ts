@@ -6,6 +6,8 @@ export interface ShoppingItem {
   catColor: string;
   quantity: number;
   isFavorite: boolean;
+  price?: number;
+  priceTrend?: 'up' | 'down' | 'equal';
 }
 
 export interface CatalogProduct {
@@ -19,9 +21,6 @@ export interface CatalogCategory {
   items: CatalogProduct[];
 }
 
-export interface Recipe {
-  title: string;
-  description: string;
-  ingredients: string[];
-  missing: string[];
+export interface PriceHistory {
+  [productName: string]: number;
 }

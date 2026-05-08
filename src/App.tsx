@@ -3,102 +3,60 @@ import {
   Share2, RefreshCw, ShoppingBasket, Edit3, ShoppingCart, 
   Plus, Mic, Trash2, CheckCircle, ChevronDown, 
   Settings, Brain, Save, Loader2, Trash, 
-  Star, Minus, PlusCircle, GripVertical, ChefHat
+  Star, Minus, PlusCircle, GripVertical, Camera
 } from 'lucide-react';
-import type { ShoppingItem, Recipe } from './types';
+import type { ShoppingItem } from './types';
 import { CATALOG_DATA } from './constants';
 
 // Drag & Drop
-import type {
-  DragEndEvent
+import type { DragEndEvent } from '@dnd-kit/core';
+import {
+  DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors
 } from '@dnd-kit/core';
 import {
-  DndContext, 
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  useSortable
+  arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-const SortableItem = ({ item, toggleItem, deleteItem, updateQuantity, toggleFavorite, mode }: any) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging
-  } = useSortable({ id: item.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 50 : 'auto',
-  };
+const SortableItem = ({ item, toggleItem, deleteItem, updateQuantity, toggleFavorite, mode, activeTheme }: any) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 50 : 'auto' };
 
   return (
-    <div 
-      ref={setNodeRef} 
-      style={style}
-      className={`group flex flex-col gap-3 p-5 rounded-[2.5rem] glass-panel transition-all duration-300 ${isDragging ? 'shadow-2xl opacity-80 ring-2 ring-violet-500 scale-105' : ''} ${item.checked ? 'opacity-40 scale-[0.98]' : 'hover:shadow-lg'}`}
-    >
+    <div ref={setNodeRef} style={style} className={`group flex flex-col gap-3 p-5 rounded-[2.5rem] glass-panel transition-all duration-300 ${isDragging ? 'shadow-2xl opacity-80 ring-2 ring-violet-500 scale-105' : ''} ${item.checked ? 'opacity-40 scale-[0.98]' : 'hover:shadow-lg'}`}>
       <div className="flex items-center gap-4">
-        <div 
-          onClick={() => toggleItem(item.id)}
-          className={`w-8 h-8 rounded-2xl border-2 flex items-center justify-center transition-all duration-300 cursor-pointer shrink-0 ${item.checked ? 'bg-slate-400 border-slate-400' : 'border-slate-300 dark:border-slate-600'}`}
-        >
+        <div onClick={() => toggleItem(item.id)} className={`w-8 h-8 rounded-2xl border-2 flex items-center justify-center transition-all duration-300 cursor-pointer shrink-0 ${item.checked ? 'bg-slate-400 border-slate-400' : 'border-slate-300 dark:border-slate-600'}`}>
           {item.checked && <CheckCircle size={18} className="text-white" strokeWidth={3} />}
         </div>
-
         <div className="flex-1 min-w-0" onClick={() => toggleItem(item.id)}>
-          <p className={`text-lg font-bold transition-all duration-300 leading-tight ${item.checked ? 'line-through text-slate-500 opacity-50' : 'text-slate-800 dark:text-white'}`}>
-            {item.text}
-          </p>
+          <div className="flex flex-col">
+            <p className={`text-lg font-bold transition-all duration-300 leading-tight ${item.checked ? 'line-through text-slate-500 opacity-50' : 'text-slate-800 dark:text-white'}`}>
+              {item.text}
+            </p>
+            {item.price && (
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{item.price.toFixed(2)}€</span>
+                {item.priceTrend === 'up' && <span className="text-[10px] font-black text-red-500 flex items-center animate-pulse">▲ SUBE</span>}
+                {item.priceTrend === 'down' && <span className="text-[10px] font-black text-green-500 flex items-center animate-pulse">▼ BAJA</span>}
+              </div>
+            )}
+          </div>
         </div>
-
         <div className="flex items-center gap-2 bg-slate-100/80 dark:bg-slate-800/80 rounded-2xl p-1 shrink-0">
-          <button onClick={() => updateQuantity(item.id, -1)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-xl transition-colors">
-            <Minus size={16} strokeWidth={3} className={item.quantity <= 1 ? 'opacity-20' : ''} />
-          </button>
+          <button onClick={() => updateQuantity(item.id, -1)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-xl transition-colors"><Minus size={16} strokeWidth={3} className={item.quantity <= 1 ? 'opacity-20' : ''} /></button>
           <span className="text-base font-black w-6 text-center">{item.quantity}</span>
-          <button onClick={() => updateQuantity(item.id, 1)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-xl transition-colors text-violet-500">
-            <PlusCircle size={16} strokeWidth={3} />
-          </button>
+          <button onClick={() => updateQuantity(item.id, 1)} className={`p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-xl transition-colors ${activeTheme.text}`}><PlusCircle size={16} strokeWidth={3} /></button>
         </div>
       </div>
-
       <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800/50">
         <div className="flex items-center gap-3">
-          {mode === 'edit' && (
-            <button {...attributes} {...listeners} className="text-slate-300 dark:text-slate-600">
-              <GripVertical size={18} />
-            </button>
-          )}
-          <span className="text-[10px] font-black uppercase tracking-[0.15em] px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800" style={{ color: item.catColor }}>
-            {item.catName}
-          </span>
+          {mode === 'edit' && <button {...attributes} {...listeners} className="text-slate-300 dark:text-slate-600"><GripVertical size={18} /></button>}
+          <span className="text-[10px] font-black uppercase tracking-[0.15em] px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800" style={{ color: item.catColor }}>{item.catName}</span>
         </div>
-
         {mode === 'edit' && (
           <div className="flex items-center gap-1">
-            <button 
-              onClick={() => toggleFavorite(item.id)}
-              className={`p-2 rounded-xl transition-colors ${item.isFavorite ? 'bg-amber-400/10 text-amber-500' : 'text-slate-300 dark:text-slate-600'}`}
-            >
-              <Star size={20} className={item.isFavorite ? 'fill-amber-500' : ''} />
-            </button>
-            <button onClick={() => deleteItem(item.id)} className="p-2 rounded-xl text-slate-300 dark:text-slate-600 hover:bg-red-500/10 hover:text-red-500 transition-colors">
-              <Trash2 size={20} />
-            </button>
+            <button onClick={() => toggleFavorite(item.id)} className={`p-2 rounded-xl transition-colors ${item.isFavorite ? 'bg-amber-400/10 text-amber-500' : 'text-slate-300 dark:text-slate-600'}`}><Star size={20} className={item.isFavorite ? 'fill-amber-500' : ''} /></button>
+            <button onClick={() => deleteItem(item.id)} className="p-2 rounded-xl text-slate-300 dark:text-slate-600 hover:bg-red-500/10 hover:text-red-500 transition-colors"><Trash2 size={20} /></button>
           </div>
         )}
       </div>
@@ -107,12 +65,9 @@ const SortableItem = ({ item, toggleItem, deleteItem, updateQuantity, toggleFavo
 };
 
 const App: React.FC = () => {
-  const APP_VERSION = "6.0 - EviShop Pro Max";
+  const APP_VERSION = "7.0 - EviShop Price Intel";
   
-  const [items, setItems] = useState<ShoppingItem[]>(() => {
-    const saved = localStorage.getItem('lme_items_pro');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [items, setItems] = useState<ShoppingItem[]>(() => JSON.parse(localStorage.getItem('lme_items_pro') || '[]'));
   const [apiKey, setApiKey] = useState<string>(localStorage.getItem('lme_gemini_key') || '');
   const [themeColor, setThemeColor] = useState<string>(localStorage.getItem('lme_theme_color') || 'violet');
   const [showSettings, setShowSettings] = useState(false);
@@ -123,40 +78,26 @@ const App: React.FC = () => {
   const [transcript, setTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [chefRecipe, setChefRecipe] = useState<Recipe | null>(null);
+  const [priceHistory, setPriceHistory] = useState<Record<string, number>>(() => JSON.parse(localStorage.getItem('lme_price_history') || '{}'));
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
-
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
   const recognitionRef = useRef<any>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
 
-  // Persistence
-  useEffect(() => {
-    localStorage.setItem('lme_items_pro', JSON.stringify(items));
-  }, [items]);
+  useEffect(() => { localStorage.setItem('lme_items_pro', JSON.stringify(items)); }, [items]);
+  useEffect(() => { localStorage.setItem('lme_gemini_key', apiKey.trim()); }, [apiKey]);
+  useEffect(() => { localStorage.setItem('lme_theme_color', themeColor); }, [themeColor]);
+  useEffect(() => { localStorage.setItem('lme_price_history', JSON.stringify(priceHistory)); }, [priceHistory]);
 
-  useEffect(() => {
-    localStorage.setItem('lme_gemini_key', apiKey.trim());
-  }, [apiKey]);
-
-  useEffect(() => {
-    localStorage.setItem('lme_theme_color', themeColor);
-  }, [themeColor]);
-
-  const themes: Record<string, { from: string, to: string, shadow: string, text: string }> = {
-    violet: { from: 'from-violet-500', to: 'to-fuchsia-500', shadow: 'shadow-violet-500/30', text: 'text-violet-500' },
-    blue: { from: 'from-blue-500', to: 'to-cyan-500', shadow: 'shadow-blue-500/30', text: 'text-blue-500' },
-    emerald: { from: 'from-emerald-500', to: 'to-teal-500', shadow: 'shadow-emerald-500/30', text: 'text-emerald-500' },
-    rose: { from: 'from-rose-500', to: 'to-pink-500', shadow: 'shadow-rose-500/30', text: 'text-rose-500' },
-    amber: { from: 'from-amber-500', to: 'to-orange-500', shadow: 'shadow-amber-500/30', text: 'text-amber-500' },
+  const themes: Record<string, any> = {
+    violet: { from: 'from-violet-500', to: 'to-fuchsia-500', shadow: 'shadow-violet-500/30', text: 'text-violet-500', bg: 'bg-violet-500' },
+    blue: { from: 'from-blue-500', to: 'to-cyan-500', shadow: 'shadow-blue-500/30', text: 'text-blue-500', bg: 'bg-blue-500' },
+    emerald: { from: 'from-emerald-500', to: 'to-teal-500', shadow: 'shadow-emerald-500/30', text: 'text-emerald-500', bg: 'bg-emerald-500' },
+    rose: { from: 'from-rose-500', to: 'to-pink-500', shadow: 'shadow-rose-500/30', text: 'text-rose-500', bg: 'bg-rose-500' },
+    amber: { from: 'from-amber-500', to: 'to-orange-500', shadow: 'shadow-amber-500/30', text: 'text-amber-500', bg: 'bg-amber-500' },
   };
-
   const activeTheme = themes[themeColor] || themes.violet;
 
-  // Audio Feedback
   const playBeep = (type: 'start' | 'stop') => {
     try {
       if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -165,64 +106,53 @@ const App: React.FC = () => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain); gain.connect(ctx.destination);
-      const now = ctx.currentTime;
-      if (type === 'start') {
-        osc.type = 'sine'; osc.frequency.setValueAtTime(440, now); osc.frequency.exponentialRampToValueAtTime(880, now + 0.1);
-      } else {
-        osc.type = 'sine'; osc.frequency.setValueAtTime(880, now); osc.frequency.exponentialRampToValueAtTime(440, now + 0.1);
-      }
-      gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-      osc.start(now); osc.stop(now + 0.1);
+      osc.frequency.setValueAtTime(type === 'start' ? 440 : 880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(type === 'start' ? 880 : 440, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+      osc.start(); osc.stop(ctx.currentTime + 0.1);
     } catch (e) {}
   };
 
-  // Voice Logic
   useEffect(() => {
     const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRec) return;
-
     const recognition = new SpeechRec();
     recognition.lang = 'es-ES';
-    recognition.interimResults = false;
-    recognition.continuous = false;
-
     recognition.onstart = () => { setIsListening(true); setTranscript(''); playBeep('start'); };
-    recognition.onresult = (e: any) => { setTranscript(e.results[0][0].transcript); };
-    recognition.onerror = () => setIsListening(false);
+    recognition.onresult = (e: any) => setTranscript(e.results[0][0].transcript);
     recognition.onend = () => setIsListening(false);
-
     recognitionRef.current = recognition;
   }, []);
-
-  const toggleListening = () => {
-    if (isListening) recognitionRef.current?.stop();
-    else {
-      setTranscript('');
-      try { recognitionRef.current?.start(); } catch (e) {
-        recognitionRef.current?.stop();
-        setTimeout(() => recognitionRef.current?.start(), 100);
-      }
-    }
-  };
 
   useEffect(() => {
     if (!isListening && transcript.trim()) {
       playBeep('stop');
       processVoiceSmart(transcript);
     }
-  }, [isListening]);
+  }, [isListening, transcript]);
 
-  const getCategoryInfo = (catName: string) => {
-    const cleanCat = catName.toLowerCase();
-    const found = CATALOG_DATA.find(c => c.c.toLowerCase().includes(cleanCat));
-    if (found) return { name: found.c, color: found.col };
-    return { name: "⚪ Varios", color: "#94a3b8" };
+  const toggleListening = () => {
+    if (isListening) recognitionRef.current?.stop();
+    else { setTranscript(''); try { recognitionRef.current?.start(); } catch (e) { recognitionRef.current?.stop(); } }
   };
 
-  const addItem = (text: string, category?: string) => {
+  const addItem = (text: string, category?: string, price?: number) => {
     if (!text.trim()) return;
     const clean = text.trim().charAt(0).toUpperCase() + text.trim().slice(1).toLowerCase();
-    const info = category ? getCategoryInfo(category) : { name: "⚪ Varios", color: "#94a3b8" };
+    const found = CATALOG_DATA.find(c => c.c.toLowerCase().includes((category || "").toLowerCase()));
+    const info = found ? { name: found.c, color: found.col } : { name: "⚪ Varios", color: "#94a3b8" };
+
+    let trend: 'up' | 'down' | 'equal' | undefined;
+    if (price && priceHistory[clean]) {
+      if (price > priceHistory[clean]) trend = 'up';
+      else if (price < priceHistory[clean]) trend = 'down';
+      else trend = 'equal';
+    }
+
+    if (price) {
+      setPriceHistory(prev => ({ ...prev, [clean]: price }));
+    }
 
     setItems(prev => [{
       id: Math.random().toString(36).substr(2, 9),
@@ -231,281 +161,113 @@ const App: React.FC = () => {
       catName: info.name,
       catColor: info.color,
       quantity: 1,
-      isFavorite: false
+      isFavorite: false,
+      price: price,
+      priceTrend: trend
     }, ...prev]);
-    if (navigator.vibrate) navigator.vibrate(30);
   };
 
   const processVoiceSmart = async (t: string) => {
-    if (!apiKey || apiKey.length < 10) {
-      processVoiceBasic(t);
+    if (!apiKey) {
+      t.split(/ y |,|\./i).forEach(p => addItem(p));
       return;
     }
     setIsProcessing(true);
     try {
-      const prompt = `Eres un asistente de lista de la compra. Tu trabajo es extraer TODOS los productos individuales del texto.
-      Devuelve SOLO un JSON válido con este formato: {"items": [{"name": "producto", "category": "Categoría"}]}
-      Categorías permitidas: Verduras, Frutas, Carne, Pescado, Lácteos, Charcutería, Despensa, Pan, Limpieza, Mascotas, Varios.
-      Texto a analizar: "${t}"`;
-
+      const prompt = `Extrae productos en JSON: {"items": [{"name": "producto", "category": "Categoría", "price": 0.0}]}. Categorías: Verduras, Frutas, Carne, Pescado, Lácteos, Charcutería, Despensa, Pan, Limpieza, Mascotas, Varios. Texto: "${t}"`;
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey.trim()}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { response_mime_type: "application/json" }
-        })
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { response_mime_type: "application/json" } })
       });
-
       const data = await response.json();
-      if (data.error) throw new Error(data.error.message || "API Error");
-
-      let textResponse = data.candidates[0].content.parts[0].text;
-      const result = JSON.parse(textResponse.trim());
-      
-      if (result.items && Array.isArray(result.items)) {
-        result.items.forEach((i: any) => addItem(i.name, i.category));
-      } else {
-        processVoiceBasic(t);
-      }
-    } catch (err: any) {
-      processVoiceBasic(t);
-    } finally {
-      setIsProcessing(false);
-      setTranscript('');
-    }
+      let res = data.candidates[0].content.parts[0].text.replace(/```json|```/g, "").trim();
+      const result = JSON.parse(res);
+      result.items.forEach((i: any) => addItem(i.name, i.category, i.price));
+    } catch (e) { t.split(/ y |,|\./i).forEach(p => addItem(p)); }
+    setIsProcessing(false); setTranscript('');
   };
 
-  const processVoiceBasic = (t: string) => {
-    const rawParts = t.split(/ y |,|\.|\n/i);
-    rawParts.forEach(part => {
-      const words = part.trim().split(/\s+/);
-      if (words.length === 0) return;
-      let currentB: string[] = [];
-      const conn = ['de', 'con', 'sin', 'para', 'la', 'el', 'en', 'un', 'una', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'del', 'al', 'los', 'las', 'kilo', 'gramos', 'litros', 'paquete', 'bolsa'];
-      words.forEach((word, index) => {
-        const w = word.toLowerCase();
-        if (index === 0) currentB.push(word);
-        else {
-          if (conn.includes(w) || conn.includes(words[index - 1].toLowerCase()) || w.length <= 2) currentB.push(word);
-          else { addItem(currentB.join(" ")); currentB = [word]; }
-        }
-      });
-      if (currentB.length > 0) addItem(currentB.join(" "));
-    });
-  };
-
-  const askChef = async () => {
-    if (!apiKey || items.length === 0) return;
+  const handleReceiptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !apiKey) return;
     setIsProcessing(true);
+    setError("Evi leyendo ticket...");
+    
     try {
-      const activeItems = items.filter(i => !i.checked).map(i => `${i.quantity}x ${i.text}`).join(", ");
-      const prompt = `Actúa como un chef creativo. Tengo estos ingredientes en mi lista: ${activeItems}. 
-      Sugiere UNA receta deliciosa que pueda hacer. Devuelve SOLO un JSON con este formato:
-      {"title": "Nombre de la receta", "description": "Breve explicación de los pasos", "ingredients": ["los que ya tengo"], "missing": ["lo que me faltaría comprar"]}
-      Sé conciso y sugerente.`;
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = (reader.result as string).split(',')[1];
+        const prompt = `Analiza este ticket de compra. Extrae los productos, sus nombres limpios, su categoría y SU PRECIO UNITARIO. Devuelve SOLO JSON: {"items": [{"name": "producto", "category": "Categoría", "price": 0.0}]}`;
+        
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey.trim()}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { text: prompt },
+                { inline_data: { mime_type: file.type, data: base64 } }
+              ]
+            }],
+            generationConfig: { response_mime_type: "application/json" }
+          })
+        });
 
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey.trim()}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { response_mime_type: "application/json" }
-        })
-      });
-
-      const data = await response.json();
-      const textResponse = data.candidates[0].content.parts[0].text;
-      setChefRecipe(JSON.parse(textResponse.trim()));
-    } catch (err: any) {
-      setError("El Chef está descansando ahora mismo...");
+        const data = await response.json();
+        let res = data.candidates[0].content.parts[0].text.replace(/```json|```/g, "").trim();
+        const result = JSON.parse(res);
+        result.items.forEach((i: any) => addItem(i.name, i.category, i.price));
+        setError("¡Ticket analizado!");
+        setTimeout(() => setError(null), 3000);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      setError("Error al leer el ticket");
       setTimeout(() => setError(null), 3000);
     } finally {
       setIsProcessing(false);
-    }
-  };
-
-  const toggleItem = (id: string) => {
-    setItems(prev => prev.map(i => i.id === id ? { ...i, checked: !i.checked } : i));
-    if (navigator.vibrate) navigator.vibrate(20);
-  };
-
-  const deleteItem = (id: string) => {
-    setItems(prev => prev.filter(i => i.id !== id));
-    if (navigator.vibrate) navigator.vibrate([10, 30, 10]);
-  };
-
-  const updateQuantity = (id: string, delta: number) => {
-    setItems(prev => prev.map(i => {
-      if (i.id === id) {
-        const newQty = Math.max(1, (i.quantity || 1) + delta);
-        return { ...i, quantity: newQty };
-      }
-      return i;
-    }));
-  };
-
-  const toggleFavorite = (id: string) => {
-    setItems(prev => prev.map(i => i.id === id ? { ...i, isFavorite: !i.isFavorite } : i));
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      setItems((currentItems) => {
-        const oldIndex = currentItems.findIndex((i) => i.id === active.id);
-        const newIndex = currentItems.findIndex((i) => i.id === over.id);
-        return arrayMove(currentItems, oldIndex, newIndex);
-      });
     }
   };
 
   const shareWhatsApp = () => {
     const f = items.filter(i => !i.checked);
-    if (f.length === 0) {
-      setError("No hay nada que compartir");
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
-    const t = "🛒 *EviShop Premium*\n\n" + f.map(i => `• ${i.quantity > 1 ? `[${i.quantity}] ` : ''}${i.text}`).join('\n');
+    if (f.length === 0) return;
+    const t = "🛒 *EviShop*\n\n" + f.map(i => `• ${i.quantity > 1 ? `[${i.quantity}] ` : ''}${i.text}`).join('\n');
     window.open("whatsapp://send?text=" + encodeURIComponent(t), '_blank');
-  };
-
-  const nukeCache = () => {
-    if (confirm("¿Limpiar todo?")) {
-      localStorage.clear();
-      window.location.reload();
-    }
   };
 
   return (
     <div className={`min-h-screen max-w-lg mx-auto relative flex flex-col font-sans ${mode === 'edit' ? 'edit-mode' : 'shop-mode'}`}>
       <header className="p-6 glass-header sticky top-0 z-40 transition-all duration-300">
         <div className="flex items-center justify-between gap-4">
-          <button onClick={askChef} className={`p-2.5 rounded-2xl bg-white dark:bg-slate-800 shadow-lg ${activeTheme.text} active:scale-90 transition-transform`}>
-            <ChefHat size={22} strokeWidth={2.5} />
+          <button onClick={() => document.getElementById('ticket-input')?.click()} className={`p-2.5 rounded-2xl bg-white dark:bg-slate-800 shadow-lg ${activeTheme.text} active:scale-90 transition-transform`}>
+            <Camera size={22} strokeWidth={2.5} />
+            <input id="ticket-input" type="file" accept="image/*" capture="environment" className="hidden" onChange={handleReceiptUpload} />
           </button>
-          <div className="text-center flex-1 flex items-center justify-center gap-2">
-            <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} flex items-center justify-center shadow-lg ${activeTheme.shadow}`}>
-              <ShoppingBasket size={18} className="text-white" />
-            </div>
-            <h1 className="text-2xl font-extrabold tracking-tight">Evi<span className={`text-transparent bg-clip-text bg-gradient-to-r ${activeTheme.from} ${activeTheme.to}`}>Shop</span></h1>
-          </div>
+          <div className="text-center flex-1"><h1 className="text-2xl font-extrabold tracking-tight">Evi<span className={`text-transparent bg-clip-text bg-gradient-to-r ${activeTheme.from} ${activeTheme.to}`}>Shop</span></h1></div>
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowSettings(!showSettings)} className={`p-2.5 rounded-2xl transition-all ${apiKey ? 'text-green-500 bg-green-500/10' : 'text-slate-400 bg-slate-100/50 dark:bg-slate-800/50'}`}>
-              <Settings size={20} strokeWidth={2.5} />
-            </button>
-            <button onClick={() => setMode(mode === 'edit' ? 'shop' : 'edit')} className={`p-2.5 rounded-2xl transition-all shadow-lg active:scale-95 ${mode === 'edit' ? `bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} text-white ${activeTheme.shadow}` : 'bg-slate-200 dark:bg-slate-800 text-slate-500'}`}>
-              {mode === 'edit' ? <ShoppingCart size={20} strokeWidth={2.5} /> : <Edit3 size={20} strokeWidth={2.5} />}
+            <button onClick={() => setShowSettings(!showSettings)} className="p-2.5 rounded-2xl bg-white dark:bg-slate-800 text-slate-500 shadow-lg"><Settings size={20} /></button>
+            <button onClick={() => setMode(mode === 'edit' ? 'shop' : 'edit')} className={`p-2.5 rounded-2xl shadow-lg transition-all ${mode === 'edit' ? `bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} text-white` : 'bg-slate-200 dark:bg-slate-800 text-slate-500'}`}>
+              {mode === 'edit' ? <ShoppingCart size={20} /> : <Edit3 size={20} />}
             </button>
           </div>
         </div>
-        {mode === 'shop' && (
-          <div className={`mt-4 flex justify-between items-center px-4 py-2 bg-gradient-to-r ${activeTheme.from} ${activeTheme.to} rounded-2xl border border-white/20 shadow-lg`}>
-            <p className="text-xs font-bold text-white uppercase tracking-widest">{items.filter(i => i.checked).length} de {items.length} COMPRADOS</p>
-            {items.length > 0 && items.every(i => i.checked) && (
-              <button onClick={() => setItems(items.filter(i => !i.checked))} className="px-3 py-1 bg-white text-slate-900 rounded-lg text-[10px] font-black uppercase shadow-sm">¡LISTO!</button>
-            )}
-          </div>
-        )}
       </header>
 
-      {showSettings && (
-        <section className="absolute inset-0 bg-white/95 dark:bg-[#0B0F19]/95 backdrop-blur-2xl z-50 p-8 flex flex-col gap-6 animate-slide-up">
-          <div className="flex items-center gap-4 mt-4">
-            <div className={`p-4 rounded-3xl bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} shadow-lg ${activeTheme.shadow} text-white`}>
-              <Brain size={32} />
-            </div>
-            <div>
-              <h2 className="text-3xl font-bold">EviShop Pro</h2>
-              <p className="text-slate-500 font-medium">Configuración de IA</p>
-            </div>
-          </div>
-          <div className="space-y-3 mt-6">
-            <label className="text-sm font-bold text-violet-500 uppercase tracking-widest">Llave Gemini (API Key)</label>
-            <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="AIza..." className="w-full p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl outline-none" />
-          </div>
-          <button onClick={nukeCache} className="mt-6 flex items-center justify-center gap-2 p-5 bg-red-50 dark:bg-red-500/10 text-red-600 rounded-3xl font-bold text-sm border border-red-100">
-            <Trash size={20} /> RESTAURAR APLICACIÓN
-          </button>
-          <div className="space-y-3 mt-4">
-            <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">Color de la App</label>
-            <div className="flex justify-between gap-2 p-4 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700">
-              {Object.keys(themes).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setThemeColor(t)}
-                  className={`w-10 h-10 rounded-full bg-gradient-to-br ${themes[t].from} ${themes[t].to} transition-all ${themeColor === t ? 'ring-4 ring-slate-200 dark:ring-slate-600 scale-110 shadow-lg' : 'scale-90 opacity-60'}`}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-auto text-center space-y-6 pb-6">
-            <p className="text-[10px] text-slate-400 font-mono opacity-50">Core: {APP_VERSION}</p>
-            <button 
-              onClick={() => {
-                localStorage.setItem('lme_gemini_key', apiKey.trim());
-                setShowSettings(false);
-              }} 
-              className={`w-full py-5 bg-gradient-to-r ${activeTheme.from} ${activeTheme.to} text-white rounded-3xl font-bold text-lg flex items-center justify-center gap-3 shadow-xl ${activeTheme.shadow} active:scale-95 transition-transform`}
-            >
-              GUARDAR Y CERRAR <Save size={24} />
-            </button>
-          </div>
-        </section>
-      )}
-
-      {isCatalogOpen && (
-        <section className="absolute inset-x-0 top-20 bottom-0 bg-white/95 dark:bg-[#0B0F19]/95 backdrop-blur-2xl z-30 p-4 overflow-y-auto animate-slide-up pb-48">
-          <button onClick={() => setIsCatalogOpen(false)} className="w-full py-3 bg-violet-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 sticky top-0 z-10 mb-4 shadow-xl">
-            CERRAR CATÁLOGO <ChevronDown />
-          </button>
-          {CATALOG_DATA.map(cat => (
-            <div key={cat.c} className="mb-6">
-              <h3 className="text-xs font-black text-slate-400 uppercase mb-3 pl-2 tracking-widest">{cat.c}</h3>
-              <div className="grid grid-cols-3 gap-2">
-                {cat.items.map(i => (
-                  <button key={i.n} onClick={() => addItem(i.n)} className="flex flex-col items-center p-3 glass-panel rounded-3xl active:scale-95 transition-transform">
-                    <span className="text-2xl">{i.e}</span>
-                    <span className="text-[10px] text-center font-bold mt-1">{i.n}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </section>
-      )}
-
       <main className="flex-1 p-6 pb-48 overflow-y-auto">
-        {items.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-6 opacity-30 animate-fade-in">
-            <div className="p-8 rounded-full bg-slate-200 dark:bg-slate-800">
-              <ShoppingBasket size={80} strokeWidth={1} />
-            </div>
-            <p className="text-xl font-bold">Tu cesta está vacía</p>
-          </div>
-        ) : (
-          <DndContext 
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
+        {items.length === 0 ? <div className="h-full flex flex-col items-center justify-center text-slate-300 opacity-30 gap-4"><ShoppingBasket size={80} /><p className="text-xl font-bold">Cesta vacía</p></div> : (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e: DragEndEvent) => { 
+            const { active, over } = e;
+            if (over && active.id !== over.id) { 
+              const o = items.findIndex(i => i.id === active.id); 
+              const n = items.findIndex(i => i.id === over.id); 
+              setItems(arrayMove(items, o, n)); 
+            } 
+          }}>
             <div className="space-y-3">
-              <SortableContext 
-                items={items.map(i => i.id)}
-                strategy={verticalListSortingStrategy}
-              >
+              <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
                 {items.map(item => (
-                  <SortableItem 
-                    key={item.id} 
-                    item={item} 
-                    toggleItem={toggleItem} 
-                    deleteItem={deleteItem}
-                    updateQuantity={updateQuantity}
-                    toggleFavorite={toggleFavorite}
-                    mode={mode}
-                  />
+                  <SortableItem key={item.id} item={item} toggleItem={(id: string) => setItems(prev => prev.map(i => i.id === id ? { ...i, checked: !i.checked } : i))} deleteItem={(id: string) => setItems(prev => prev.filter(i => i.id !== id))} updateQuantity={(id: string, d: number) => setItems(prev => prev.map(i => i.id === id ? { ...i, quantity: Math.max(1, (i.quantity || 1) + d) } : i))} toggleFavorite={(id: string) => setItems(prev => prev.map(i => i.id === id ? { ...i, isFavorite: !i.isFavorite } : i))} mode={mode} activeTheme={activeTheme} />
                 ))}
               </SortableContext>
             </div>
@@ -513,108 +275,57 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {chefRecipe && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-center justify-center p-6">
-          <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] p-8 w-full max-h-[80vh] overflow-y-auto relative animate-slide-up shadow-2xl">
-            <button onClick={() => setChefRecipe(null)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 transition-colors">
-              ✕
-            </button>
-            <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} flex items-center justify-center text-white shadow-lg mb-6`}>
-              <ChefHat size={32} />
-            </div>
-            <h2 className={`text-2xl font-black mb-2 uppercase tracking-tight ${activeTheme.text}`}>{chefRecipe.title}</h2>
-            <p className="text-sm text-slate-500 mb-8 font-medium leading-relaxed">{chefRecipe.description}</p>
-            
-            <div className="space-y-6">
-              <div>
-                <p className="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-[0.2em]">Ingredientes que tienes</p>
-                <div className="flex flex-wrap gap-2">
-                  {chefRecipe.ingredients.map(i => (
-                    <span key={i} className="px-3 py-1.5 bg-green-500/10 text-green-600 rounded-xl text-xs font-bold border border-green-500/20">
-                      ✓ {i}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              
-              {chefRecipe.missing.length > 0 && (
-                <div>
-                  <p className="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-[0.2em]">Lo que te falta</p>
-                  <div className="flex flex-wrap gap-2">
-                    {chefRecipe.missing.map(i => (
-                      <button 
-                        key={i} 
-                        onClick={() => { addItem(i); setChefRecipe(null); }}
-                        className="px-3 py-1.5 bg-red-500/10 text-red-600 rounded-xl text-xs font-bold border border-red-500/20 active:scale-95 transition-transform"
-                      >
-                        + {i}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            <button 
-              onClick={() => setChefRecipe(null)}
-              className={`w-full mt-10 py-4 rounded-2xl bg-gradient-to-r ${activeTheme.from} ${activeTheme.to} text-white font-black uppercase tracking-widest shadow-lg ${activeTheme.shadow}`}
-            >
-              ¡ENTENDIDO!
-            </button>
-          </div>
-        </div>
-      )}
-
       {isListening && (
-        <div className="fixed inset-0 bg-slate-900/95 z-50 flex items-center justify-center p-8 backdrop-blur-sm">
+        <div className="fixed inset-0 bg-slate-900/90 z-50 flex items-center justify-center p-8 backdrop-blur-md">
           <div className="bg-white dark:bg-slate-800 rounded-[3rem] p-8 w-full max-w-xs text-center flex flex-col items-center gap-6 shadow-2xl">
-            <div className="bg-red-500 p-8 rounded-full animate-pulse shadow-2xl shadow-red-500/50">
-              <Mic size={48} className="text-white" />
-            </div>
-            <p className="text-xl font-bold text-slate-400 italic">"{transcript || 'Dime qué comprar...'}"</p>
-            <button onClick={toggleListening} className="w-full py-4 bg-red-500 text-white rounded-3xl font-black text-lg">PARAR</button>
+            <div className="bg-red-500 p-8 rounded-full animate-pulse"><Mic size={48} className="text-white" /></div>
+            <p className="text-lg font-bold text-slate-500 italic">"{transcript || 'Dime...'}"</p>
+            <button onClick={toggleListening} className="w-full py-4 bg-red-500 text-white rounded-3xl font-black">PARAR</button>
           </div>
         </div>
       )}
 
-      {isProcessing && (
-        <div className="fixed inset-0 bg-violet-500/20 backdrop-blur-md z-50 flex items-center justify-center">
-          <div className="bg-white dark:bg-slate-800 p-8 rounded-[3rem] shadow-2xl flex flex-col items-center gap-4">
-            <Loader2 className="w-10 h-10 text-violet-500 animate-spin" strokeWidth={3} />
-            <p className="font-black text-violet-500 uppercase tracking-widest text-sm">Procesando...</p>
+      <nav className="fixed bottom-0 inset-x-0 p-6 flex flex-col items-center gap-6 pointer-events-none z-40">
+        <div className="w-full max-w-sm flex gap-3 pointer-events-auto">
+          <button onClick={() => setIsCatalogOpen(!isCatalogOpen)} className={`p-4 rounded-3xl glass-panel shadow-2xl transition-all ${isCatalogOpen ? activeTheme.bg + ' text-white border-0' : 'text-slate-500'}`}><ShoppingCart size={24} /></button>
+          <div className="flex-1 flex glass-panel rounded-3xl overflow-hidden shadow-2xl pl-2">
+            <input type="text" value={manualInput} onChange={(e) => setManualInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && (addItem(manualInput), setManualInput(''))} placeholder="¿Qué compras?" className="flex-1 px-4 bg-transparent outline-none font-bold" />
+            <button onClick={() => { addItem(manualInput); setManualInput(''); }} className={`p-4 bg-slate-100 dark:bg-slate-800 ${activeTheme.text}`}><Plus size={24} /></button>
           </div>
         </div>
-      )}
-
-      {mode === 'edit' && (
-        <nav className="fixed bottom-0 inset-x-0 p-6 flex flex-col items-center gap-6 pointer-events-none z-40">
-          <div className="w-full max-w-sm flex gap-3 pointer-events-auto">
-            <button onClick={() => setIsCatalogOpen(!isCatalogOpen)} className={`p-4 rounded-3xl glass-panel shadow-2xl transition-all ${isCatalogOpen ? `bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} text-white border-0` : 'text-slate-500'}`}>
-              <ShoppingCart size={24} />
-            </button>
-            <div className="flex-1 flex glass-panel rounded-3xl overflow-hidden shadow-2xl pl-2">
-              <input type="text" value={manualInput} onChange={(e) => setManualInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && (addItem(manualInput), setManualInput(''))} placeholder="¿Qué quieres hoy?" className="flex-1 px-4 bg-transparent outline-none font-bold" />
-              <button onClick={() => { addItem(manualInput); setManualInput(''); }} className={`p-4 bg-slate-100 dark:bg-slate-800 ${activeTheme.text}`}><Plus size={24} strokeWidth={3} /></button>
-            </div>
-            <button onClick={shareWhatsApp} className="p-4 rounded-3xl bg-green-500 text-white shadow-2xl">
-              <Share2 size={24} strokeWidth={2.5} />
-            </button>
-          </div>
+        {mode === 'edit' && (
           <div className="flex gap-4 pointer-events-auto">
-            <button onClick={() => { if(confirm("¿Vaciar lista?")) setItems([]); }} className="p-4 rounded-3xl glass-panel text-slate-500 shadow-xl transition-all active:scale-90">
-              <RefreshCw size={24} />
-            </button>
-            <button onClick={toggleListening} className={`w-20 h-20 rounded-[2.5rem] flex items-center justify-center shadow-2xl pointer-events-auto transition-all duration-300 active:scale-90 ${isListening ? 'bg-red-500' : `bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} ${activeTheme.shadow}`}`}>
-              <Mic size={36} className="text-white" />
-            </button>
-            <button onClick={shareWhatsApp} className="p-4 rounded-3xl bg-green-500 text-white shadow-xl transition-all active:scale-90">
-              <Share2 size={24} strokeWidth={2.5} />
-            </button>
+            <button onClick={() => { if(confirm("¿Vaciar?")) setItems([]); }} className="p-4 rounded-3xl glass-panel text-slate-500 shadow-xl"><RefreshCw size={24} /></button>
+            <button onClick={toggleListening} className={`w-20 h-20 rounded-[2.5rem] flex items-center justify-center shadow-2xl transition-all ${isListening ? 'bg-red-500' : `bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} ${activeTheme.shadow}`}`}><Mic size={36} className="text-white" /></button>
+            <button onClick={shareWhatsApp} className="p-4 rounded-3xl bg-green-500 text-white shadow-xl"><Share2 size={24} /></button>
           </div>
-        </nav>
+        )}
+      </nav>
+
+      {showSettings && (
+        <section className="absolute inset-0 bg-white/95 dark:bg-[#0B0F19]/95 backdrop-blur-2xl z-[80] p-8 flex flex-col gap-6 animate-slide-up">
+          <div className="flex items-center gap-4 mt-4">
+            <div className={`p-4 rounded-3xl bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} shadow-lg ${activeTheme.shadow} text-white`}><Brain size={32} /></div>
+            <div><h2 className="text-3xl font-bold">EviShop Pro</h2><p className="text-slate-500 font-medium">v{APP_VERSION}</p></div>
+          </div>
+          <div className="space-y-2"><label className="text-xs font-black uppercase text-slate-400">Gemini API Key</label><input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="AIza..." className="w-full p-5 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200" /></div>
+          <div className="space-y-2"><label className="text-xs font-black uppercase text-slate-400">Color App</label><div className="flex justify-between gap-2 p-4 bg-white dark:bg-slate-800 rounded-3xl">{['violet', 'blue', 'emerald', 'rose', 'amber'].map(t => <button key={t} onClick={() => setThemeColor(t)} className={`w-10 h-10 rounded-full bg-gradient-to-br ${themes[t].from} ${themes[t].to} ${themeColor === t ? 'ring-4 ring-slate-200' : ''}`} />)}</div></div>
+          <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="mt-4 p-5 bg-red-50 text-red-600 rounded-3xl font-bold text-xs">RESTAURAR APLICACIÓN</button>
+          <button onClick={() => setShowSettings(false)} className={`mt-auto w-full py-5 bg-gradient-to-r ${activeTheme.from} ${activeTheme.to} text-white rounded-3xl font-bold flex items-center justify-center gap-3 shadow-xl`}><Save size={24} /> GUARDAR</button>
+        </section>
       )}
 
-      {error && <div className="fixed top-24 left-1/2 -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-2xl font-bold shadow-2xl z-[60] animate-bounce">{error}</div>}
+      {isCatalogOpen && (
+        <section className="absolute inset-x-0 top-20 bottom-0 bg-white/95 dark:bg-[#0B0F19]/95 backdrop-blur-2xl z-30 p-4 overflow-y-auto animate-slide-up pb-48 text-center">
+          <button onClick={() => setIsCatalogOpen(false)} className="w-full py-3 bg-slate-800 text-white rounded-2xl font-bold mb-4 flex items-center justify-center gap-2">CERRAR <ChevronDown /></button>
+          {CATALOG_DATA.map(cat => (
+            <div key={cat.c} className="mb-6"><h3 className="text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest">{cat.c}</h3><div className="grid grid-cols-3 gap-2">{cat.items.map(i => <button key={i.n} onClick={() => addItem(i.n)} className="flex flex-col items-center p-3 glass-panel rounded-3xl active:scale-95 transition-transform"><span className="text-2xl">{i.e}</span><span className="text-[10px] font-bold mt-1">{i.n}</span></button>)}</div></div>
+          ))}
+        </section>
+      )}
+
+      {isProcessing && <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center"><div className="bg-white dark:bg-slate-800 p-8 rounded-[3rem] shadow-2xl flex flex-col items-center gap-4"><Loader2 className="w-10 h-10 text-violet-500 animate-spin" /><p className="font-black text-[10px] text-violet-500 uppercase tracking-widest text-center">Evi leyendo ticket...</p></div></div>}
+      {error && <div className="fixed top-24 left-1/2 -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-2xl font-bold shadow-2xl z-[110] text-sm">{error}</div>}
     </div>
   );
 };
