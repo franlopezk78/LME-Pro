@@ -162,7 +162,13 @@ const App: React.FC = () => {
   };
 
   const toggleItem = (id: string) => {
-    setItems(prev => prev.map(i => i.id === id ? { ...i, checked: !i.checked, ...( (!i.checked) && trackCategoryCheck(i.catName) ) } : i));
+    setItems(prev => prev.map(i => {
+      if (i.id === id) {
+        if (!i.checked) trackCategoryCheck(i.catName);
+        return { ...i, checked: !i.checked };
+      }
+      return i;
+    }));
     if (navigator.vibrate) navigator.vibrate(20);
   };
 
