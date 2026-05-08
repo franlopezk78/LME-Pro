@@ -114,6 +114,7 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
   const [apiKey, setApiKey] = useState<string>(localStorage.getItem('lme_gemini_key') || '');
+  const [themeColor, setThemeColor] = useState<string>(localStorage.getItem('lme_theme_color') || 'violet');
   const [showSettings, setShowSettings] = useState(false);
   const [mode, setMode] = useState<'edit' | 'shop'>('edit');
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
@@ -139,6 +140,20 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('lme_gemini_key', apiKey.trim());
   }, [apiKey]);
+
+  useEffect(() => {
+    localStorage.setItem('lme_theme_color', themeColor);
+  }, [themeColor]);
+
+  const themes: Record<string, { from: string, to: string, shadow: string, text: string }> = {
+    violet: { from: 'from-violet-500', to: 'to-fuchsia-500', shadow: 'shadow-violet-500/30', text: 'text-violet-500' },
+    blue: { from: 'from-blue-500', to: 'to-cyan-500', shadow: 'shadow-blue-500/30', text: 'text-blue-500' },
+    emerald: { from: 'from-emerald-500', to: 'to-teal-500', shadow: 'shadow-emerald-500/30', text: 'text-emerald-500' },
+    rose: { from: 'from-rose-500', to: 'to-pink-500', shadow: 'shadow-rose-500/30', text: 'text-rose-500' },
+    amber: { from: 'from-amber-500', to: 'to-orange-500', shadow: 'shadow-amber-500/30', text: 'text-amber-500' },
+  };
+
+  const activeTheme = themes[themeColor] || themes.violet;
 
   // Audio Feedback
   const playBeep = (type: 'start' | 'stop') => {
@@ -340,25 +355,25 @@ const App: React.FC = () => {
             <RefreshCw size={20} strokeWidth={2.5} />
           </button>
           <div className="text-center flex-1 flex items-center justify-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-violet-500/30">
+            <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} flex items-center justify-center shadow-lg ${activeTheme.shadow}`}>
               <ShoppingBasket size={18} className="text-white" />
             </div>
-            <h1 className="text-2xl font-extrabold tracking-tight">Evi<span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-fuchsia-500">Shop</span></h1>
+            <h1 className="text-2xl font-extrabold tracking-tight">Evi<span className={`text-transparent bg-clip-text bg-gradient-to-r ${activeTheme.from} ${activeTheme.to}`}>Shop</span></h1>
           </div>
           <div className="flex gap-2 justify-end">
             <button onClick={() => setShowSettings(!showSettings)} className={`p-2.5 rounded-2xl transition-all ${apiKey ? 'text-green-500 bg-green-500/10' : 'text-slate-400 bg-slate-100/50 dark:bg-slate-800/50'}`}>
               <Settings size={20} strokeWidth={2.5} />
             </button>
-            <button onClick={() => setMode(mode === 'edit' ? 'shop' : 'edit')} className={`p-2.5 rounded-2xl transition-all shadow-lg active:scale-95 ${mode === 'edit' ? 'bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-violet-500/30' : 'bg-slate-200 dark:bg-slate-800 text-slate-500'}`}>
+            <button onClick={() => setMode(mode === 'edit' ? 'shop' : 'edit')} className={`p-2.5 rounded-2xl transition-all shadow-lg active:scale-95 ${mode === 'edit' ? `bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} text-white ${activeTheme.shadow}` : 'bg-slate-200 dark:bg-slate-800 text-slate-500'}`}>
               {mode === 'edit' ? <ShoppingCart size={20} strokeWidth={2.5} /> : <Edit3 size={20} strokeWidth={2.5} />}
             </button>
           </div>
         </div>
         {mode === 'shop' && (
-          <div className="mt-4 flex justify-between items-center px-4 py-2 bg-violet-500/10 rounded-2xl border border-violet-500/20">
-            <p className="text-xs font-bold text-violet-500 uppercase tracking-widest">{items.filter(i => i.checked).length} de {items.length} COMPRADOS</p>
+          <div className={`mt-4 flex justify-between items-center px-4 py-2 bg-gradient-to-r ${activeTheme.from} ${activeTheme.to} rounded-2xl border border-white/20 shadow-lg`}>
+            <p className="text-xs font-bold text-white uppercase tracking-widest">{items.filter(i => i.checked).length} de {items.length} COMPRADOS</p>
             {items.length > 0 && items.every(i => i.checked) && (
-              <button onClick={() => setItems(items.filter(i => !i.checked))} className="px-3 py-1 bg-violet-500 text-white rounded-lg text-[10px] font-black uppercase">¡LISTO!</button>
+              <button onClick={() => setItems(items.filter(i => !i.checked))} className="px-3 py-1 bg-white text-slate-900 rounded-lg text-[10px] font-black uppercase shadow-sm">¡LISTO!</button>
             )}
           </div>
         )}
@@ -367,7 +382,7 @@ const App: React.FC = () => {
       {showSettings && (
         <section className="absolute inset-0 bg-white/95 dark:bg-[#0B0F19]/95 backdrop-blur-2xl z-50 p-8 flex flex-col gap-6 animate-slide-up">
           <div className="flex items-center gap-4 mt-4">
-            <div className="p-4 rounded-3xl bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/30 text-white">
+            <div className={`p-4 rounded-3xl bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} shadow-lg ${activeTheme.shadow} text-white`}>
               <Brain size={32} />
             </div>
             <div>
@@ -382,6 +397,19 @@ const App: React.FC = () => {
           <button onClick={nukeCache} className="mt-6 flex items-center justify-center gap-2 p-5 bg-red-50 dark:bg-red-500/10 text-red-600 rounded-3xl font-bold text-sm border border-red-100">
             <Trash size={20} /> RESTAURAR APLICACIÓN
           </button>
+          <div className="space-y-3 mt-4">
+            <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">Color de la App</label>
+            <div className="flex justify-between gap-2 p-4 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700">
+              {Object.keys(themes).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setThemeColor(t)}
+                  className={`w-10 h-10 rounded-full bg-gradient-to-br ${themes[t].from} ${themes[t].to} transition-all ${themeColor === t ? 'ring-4 ring-slate-200 dark:ring-slate-600 scale-110 shadow-lg' : 'scale-90 opacity-60'}`}
+                />
+              ))}
+            </div>
+          </div>
+
           <div className="mt-auto text-center space-y-6 pb-6">
             <p className="text-[10px] text-slate-400 font-mono opacity-50">Core: {APP_VERSION}</p>
             <button 
@@ -389,7 +417,7 @@ const App: React.FC = () => {
                 localStorage.setItem('lme_gemini_key', apiKey.trim());
                 setShowSettings(false);
               }} 
-              className="w-full py-5 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-3xl font-bold text-lg flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-transform"
+              className={`w-full py-5 bg-gradient-to-r ${activeTheme.from} ${activeTheme.to} text-white rounded-3xl font-bold text-lg flex items-center justify-center gap-3 shadow-xl ${activeTheme.shadow} active:scale-95 transition-transform`}
             >
               GUARDAR Y CERRAR <Save size={24} />
             </button>
@@ -478,18 +506,18 @@ const App: React.FC = () => {
       {mode === 'edit' && (
         <nav className="fixed bottom-0 inset-x-0 p-6 flex flex-col items-center gap-6 pointer-events-none z-40">
           <div className="w-full max-w-sm flex gap-3 pointer-events-auto">
-            <button onClick={() => setIsCatalogOpen(!isCatalogOpen)} className={`p-4 rounded-3xl glass-panel shadow-2xl transition-all ${isCatalogOpen ? 'bg-violet-500 text-white' : 'text-slate-500'}`}>
+            <button onClick={() => setIsCatalogOpen(!isCatalogOpen)} className={`p-4 rounded-3xl glass-panel shadow-2xl transition-all ${isCatalogOpen ? `bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} text-white border-0` : 'text-slate-500'}`}>
               <ShoppingCart size={24} />
             </button>
             <div className="flex-1 flex glass-panel rounded-3xl overflow-hidden shadow-2xl pl-2">
               <input type="text" value={manualInput} onChange={(e) => setManualInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && (addItem(manualInput), setManualInput(''))} placeholder="¿Qué quieres hoy?" className="flex-1 px-4 bg-transparent outline-none font-bold" />
-              <button onClick={() => { addItem(manualInput); setManualInput(''); }} className="p-4 bg-slate-100 dark:bg-slate-800 text-violet-500"><Plus size={24} strokeWidth={3} /></button>
+              <button onClick={() => { addItem(manualInput); setManualInput(''); }} className={`p-4 bg-slate-100 dark:bg-slate-800 ${activeTheme.text}`}><Plus size={24} strokeWidth={3} /></button>
             </div>
             <button onClick={shareWhatsApp} className="p-4 rounded-3xl bg-green-500 text-white shadow-2xl">
               <Share2 size={24} strokeWidth={2.5} />
             </button>
           </div>
-          <button onClick={toggleListening} className={`w-20 h-20 rounded-[2.5rem] flex items-center justify-center shadow-2xl pointer-events-auto transition-all duration-300 active:scale-90 ${isListening ? 'bg-red-500' : 'bg-gradient-to-br from-violet-500 to-fuchsia-500'}`}>
+          <button onClick={toggleListening} className={`w-20 h-20 rounded-[2.5rem] flex items-center justify-center shadow-2xl pointer-events-auto transition-all duration-300 active:scale-90 ${isListening ? 'bg-red-500' : `bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} ${activeTheme.shadow}`}`}>
             <Mic size={36} className="text-white" />
           </button>
         </nav>
