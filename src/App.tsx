@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Share2, RefreshCw, ShoppingBasket, Edit3, ShoppingCart, Plus, Mic, Package, Trash2, CheckCircle, ChevronDown } from 'lucide-react';
+import { Share2, RefreshCw, ShoppingBasket, Edit3, ShoppingCart, Plus, Mic, Package, Trash2, CheckCircle, ChevronDown, Settings, Brain, Save } from 'lucide-react';
 import type { ShoppingItem } from './types';
 import { CATALOG_DATA } from './constants';
 
@@ -8,12 +8,15 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('lme_items_pro');
     return saved ? JSON.parse(saved) : [];
   });
+  const [apiKey, setApiKey] = useState<string>(localStorage.getItem('lme_gemini_key') || '');
+  const [showSettings, setShowSettings] = useState(false);
   const [mode, setMode] = useState<'edit' | 'shop'>('edit');
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
   const [manualInput, setManualInput] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const recognitionRef = useRef<any>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -22,6 +25,10 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('lme_items_pro', JSON.stringify(items));
   }, [items]);
+
+  useEffect(() => {
+    localStorage.setItem('lme_gemini_key', apiKey);
+  }, [apiKey]);
 
   // Audio Feedback
   const playBeep = (type: 'start' | 'stop') => {
@@ -82,24 +89,43 @@ const App: React.FC = () => {
       recognitionRef.current?.stop();
       setIsListening(false);
       playBeep('stop');
-      if (transcript.trim()) processVoice(transcript);
+      if (transcript.trim()) processVoiceSmart(transcript);
     } else {
       recognitionRef.current?.start();
     }
   };
 
-  const getCategoryInfo = (text: string) => {
-    const t = text.toLowerCase();
+  const getCategoryInfo = (catName: string) => {
+    const found = CATALOG_DATA.find(c => c.c.includes(catName));
+    if (found) return { name: found.c, color: found.col };
+    
+    // Fallback search in catalog items
     for (const cat of CATALOG_DATA) {
-      if (cat.items.some(item => t.includes(item.n.toLowerCase()))) return { name: cat.c, color: cat.col };
+      if (cat.items.some(item => catName.toLowerCase().includes(item.n.toLowerCase()))) 
+        return { name: cat.c, color: cat.col };
     }
     return { name: "⚪ Varios", color: "#94a3b8" };
   };
 
-  const addItem = (text: string) => {
+  const addItem = (text: string, category?: string) => {
     if (!text.trim()) return;
     const clean = text.trim().charAt(0).toUpperCase() + text.trim().slice(1).toLowerCase();
-    const info = getCategoryInfo(clean);
+    
+    let info;
+    if (category) {
+      info = getCategoryInfo(category);
+    } else {
+      // Old school categorization logic as fallback
+      const t = clean.toLowerCase();
+      info = { name: "⚪ Varios", color: "#94a3b8" };
+      for (const cat of CATALOG_DATA) {
+        if (cat.items.some(item => t.includes(item.n.toLowerCase()))) {
+          info = { name: cat.c, color: cat.col };
+          break;
+        }
+      }
+    }
+
     setItems(prev => [...prev, {
       id: Math.random().toString(36).substr(2, 9),
       text: clean,
@@ -110,7 +136,49 @@ const App: React.FC = () => {
     if (navigator.vibrate) navigator.vibrate(30);
   };
 
-  const processVoice = (t: string) => {
+  const processVoiceSmart = async (t: string) => {
+    if (!apiKey) {
+      // Fallback to basic processing if no API Key
+      processVoiceBasic(t);
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const prompt = `Eres un asistente de lista de la compra experto. 
+      Analiza el siguiente texto dictado por voz y conviértelo en una lista de productos. 
+      Si mencionan una receta (ej: tortilla de patatas), añade sus ingredientes básicos.
+      Si mencionan cantidades, inclúyelas en el nombre del producto (ej: "2 litros de leche").
+      IMPORTANTE: Devuelve EXCLUSIVAMENTE un JSON con este formato: {"items": [{"name": "producto", "category": "Categoría"}]}
+      Usa solo estas categorías: ${CATALOG_DATA.map(c => c.c.split(' ')[1]).join(', ')}, Varios.
+      Texto: "${t}"`;
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { response_mime_type: "application/json" }
+        })
+      });
+
+      const data = await response.json();
+      const result = JSON.parse(data.candidates[0].content.parts[0].text);
+      
+      if (result.items) {
+        result.items.forEach((i: any) => addItem(i.name, i.category));
+      }
+    } catch (err) {
+      console.error(err);
+      processVoiceBasic(t); // Fallback
+      setError("Error con la IA. Usando modo básico.");
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const processVoiceBasic = (t: string) => {
     const rawParts = t.split(/ y |,|\.|\n/i);
     rawParts.forEach(part => {
       const words = part.trim().split(/\s+/);
@@ -170,10 +238,10 @@ const App: React.FC = () => {
   const sortedCats = Object.keys(grouped).sort();
 
   return (
-    <div className={`min-h-screen max-w-lg mx-auto relative flex flex-col ${mode === 'edit' ? 'edit-mode' : 'shop-mode'}`}>
+    <div className={`min-h-screen max-w-lg mx-auto relative flex flex-col bg-slate-50 dark:bg-slate-900 ${mode === 'edit' ? 'edit-mode' : 'shop-mode'}`}>
       {/* Header */}
       <header className="p-6 bg-white dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-700 backdrop-blur-md sticky top-0 z-10">
-        <div className="grid grid-cols-[40px_1fr_80px] items-center gap-4">
+        <div className="grid grid-cols-[40px_1fr_120px] items-center gap-4">
           <button onClick={resetAll} className="p-2 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-500">
             <RefreshCw size={20} />
           </button>
@@ -181,6 +249,9 @@ const App: React.FC = () => {
             <h1 className="text-xl font-bold">Los Mandaos de <span className="text-violet-500">Evi</span></h1>
           </div>
           <div className="flex gap-2 justify-end">
+            <button onClick={() => setShowSettings(!showSettings)} className={`p-2 rounded-xl ${apiKey ? 'text-green-500' : 'text-slate-400'} bg-slate-100 dark:bg-slate-700`}>
+              <Settings size={20} />
+            </button>
             {mode === 'edit' && (
               <button onClick={shareWhatsApp} className="p-2 rounded-xl bg-green-500 text-white">
                 <Share2 size={20} />
@@ -209,6 +280,43 @@ const App: React.FC = () => {
           </div>
         )}
       </header>
+
+      {/* Settings Overlay */}
+      {showSettings && (
+        <section className="absolute inset-0 bg-white dark:bg-slate-900 z-30 p-8 flex flex-col gap-6 animate-slide-in">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="p-3 bg-violet-500 rounded-2xl text-white">
+              <Brain size={32} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold">Configuración IA</h2>
+              <p className="text-slate-500 text-sm">Activa el cerebro de Evi</p>
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-400 uppercase">Google Gemini API Key</label>
+            <input 
+              type="password" 
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="Pega tu llave AIza..."
+              className="w-full p-4 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl outline-none focus:ring-2 ring-violet-500"
+            />
+          </div>
+
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Esta llave se guarda solo en tu móvil. Activa el reconocimiento inteligente, comprensión de recetas y auto-categorización.
+          </p>
+
+          <button 
+            onClick={() => setShowSettings(false)}
+            className="mt-auto py-4 bg-violet-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2"
+          >
+            Guardar y Volver <Save size={20} />
+          </button>
+        </section>
+      )}
 
       {/* Catalog Overlay */}
       {isCatalogOpen && (
@@ -242,7 +350,7 @@ const App: React.FC = () => {
       )}
 
       {/* Main List */}
-      <main className="flex-1 p-6 pb-48">
+      <main className="flex-1 p-6 pb-48 overflow-y-auto">
         {items.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-4 opacity-50">
             <Package size={60} />
@@ -296,7 +404,7 @@ const App: React.FC = () => {
               </div>
             </div>
             <p className="font-medium text-slate-500 min-h-[3rem] italic">
-              {transcript || 'Dime qué comprar...'}
+              {transcript || 'Te escucho...'}
             </p>
             <button 
               onClick={toggleListening}
@@ -304,6 +412,16 @@ const App: React.FC = () => {
             >
               Terminar
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Loading Overlay */}
+      {isProcessing && (
+        <div className="fixed inset-0 bg-violet-500/20 backdrop-blur-[2px] z-40 flex items-center justify-center">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-2xl flex items-center gap-4">
+            <div className="w-6 h-6 border-4 border-violet-500 border-t-transparent rounded-full animate-spin" />
+            <p className="font-bold text-violet-500">Evi está pensando...</p>
           </div>
         </div>
       )}
