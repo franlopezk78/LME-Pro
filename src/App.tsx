@@ -66,12 +66,11 @@ const App: React.FC = () => {
       };
 
       recognition.onresult = (e: any) => {
-        let interim = '', finalS = '';
-        for (let i = e.resultIndex; i < e.results.length; ++i) {
-          if (e.results[i].isFinal) finalS += e.results[i][0].transcript + " ";
-          else interim += e.results[i][0].transcript;
+        let fullTranscript = '';
+        for (let i = 0; i < e.results.length; i++) {
+          fullTranscript += e.results[i][0].transcript;
         }
-        setTranscript(prev => prev + finalS + interim);
+        setTranscript(fullTranscript);
       };
 
       recognition.onend = () => {
