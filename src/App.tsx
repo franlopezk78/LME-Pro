@@ -239,6 +239,11 @@ const App: React.FC = () => {
     window.open("whatsapp://send?text=" + encodeURIComponent(t), '_blank');
   };
 
+  const sortedItems = [...items].sort((a, b) => {
+    if (a.checked !== b.checked) return a.checked ? 1 : -1;
+    return 0; // Mantiene el orden original entre elementos del mismo estado
+  });
+
   return (
     <div className={`min-h-screen max-w-lg mx-auto relative flex flex-col font-sans ${mode === 'edit' ? 'edit-mode' : 'shop-mode'}`}>
       <header className="p-6 glass-header sticky top-0 z-40 transition-all duration-300">
@@ -268,8 +273,8 @@ const App: React.FC = () => {
             } 
           }}>
             <div className="space-y-3">
-              <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
-                {items.map(item => (
+              <SortableContext items={sortedItems.map(i => i.id)} strategy={verticalListSortingStrategy}>
+                {sortedItems.map(item => (
                   <SortableItem key={item.id} item={item} toggleItem={(id: string) => setItems(prev => prev.map(i => i.id === id ? { ...i, checked: !i.checked } : i))} deleteItem={(id: string) => setItems(prev => prev.filter(i => i.id !== id))} updateQuantity={(id: string, d: number) => setItems(prev => prev.map(i => i.id === id ? { ...i, quantity: Math.max(1, (i.quantity || 1) + d) } : i))} toggleFavorite={(id: string) => setItems(prev => prev.map(i => i.id === id ? { ...i, isFavorite: !i.isFavorite } : i))} mode={mode} activeTheme={activeTheme} />
                 ))}
               </SortableContext>
