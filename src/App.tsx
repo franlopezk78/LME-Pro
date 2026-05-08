@@ -50,47 +50,61 @@ const App: React.FC = () => {
     } catch (e) {}
   };
 
-  // Voice Logic
+  // Voice Logic (Single Initialization)
   useEffect(() => {
     const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRec) {
-      const recognition = new SpeechRec();
-      recognition.lang = 'es-ES';
-      recognition.interimResults = true;
-      recognition.continuous = true;
+    if (!SpeechRec) return;
 
-      recognition.onstart = () => {
-        setIsListening(true);
-        setTranscript('');
-        playBeep('start');
-      };
+    const recognition = new SpeechRec();
+    recognition.lang = 'es-ES';
+    recognition.interimResults = true;
+    recognition.continuous = true;
 
-      recognition.onresult = (e: any) => {
-        let fullTranscript = '';
-        for (let i = 0; i < e.results.length; i++) {
-          fullTranscript += e.results[i][0].transcript;
-        }
-        setTranscript(fullTranscript);
-      };
+    recognition.onstart = () => {
+      setIsListening(true);
+      setTranscript('');
+      playBeep('start');
+    };
 
-      recognition.onend = () => {
-        if (isListening) {
-          try { recognition.start(); } catch (e) {}
-        }
-      };
+    recognition.onresult = (e: any) => {
+      let finalTranscript = '';
+      for (let i = 0; i < e.results.length; i++) {
+        finalTranscript += e.results[i][0].transcript;
+      }
+      setTranscript(finalTranscript);
+    };
 
-      recognitionRef.current = recognition;
-    }
-  }, [isListening]);
+    recognition.onerror = () => setIsListening(false);
+    
+    recognition.onend = () => {
+      // Solo reiniciamos si el estado 'isListening' sigue siendo true (pérdida de foco, etc)
+      // Pero si el usuario le dio a "Terminar", no reiniciamos.
+    };
+
+    recognitionRef.current = recognition;
+  }, []); // Solo se ejecuta una vez al cargar la app
 
   const toggleListening = () => {
     if (isListening) {
       recognitionRef.current?.stop();
       setIsListening(false);
       playBeep('stop');
-      if (transcript.trim()) processVoiceSmart(transcript);
+      // Usamos un pequeño delay para asegurar que el transcript final esté listo
+      setTimeout(() => {
+        setTranscript(prev => {
+          if (prev.trim()) processVoiceSmart(prev);
+          return '';
+        });
+      }, 500);
     } else {
-      recognitionRef.current?.start();
+      setTranscript('');
+      try {
+        recognitionRef.current?.start();
+      } catch (e) {
+        // Si ya estaba arrancado por error, lo paramos y arrancamos
+        recognitionRef.current?.stop();
+        setTimeout(() => recognitionRef.current?.start(), 100);
+      }
     }
   };
 
