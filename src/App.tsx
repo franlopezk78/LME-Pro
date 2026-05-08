@@ -214,9 +214,11 @@ const App: React.FC = () => {
       <main className="flex-1 p-6 pb-48 overflow-y-auto">
         {items.length === 0 ? <div className="h-full flex flex-col items-center justify-center text-slate-300 opacity-30 gap-4"><ShoppingBasket size={80} /><p className="text-xl font-bold">Lista vacía</p></div> : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e: DragEndEvent) => { 
-            if (e.over && e.active.id !== e.over.id) { 
-              const o = items.findIndex(i => i.id === e.active.id); 
-              const n = items.findIndex(i => i.id === e.over.id); 
+            const { active, over } = e;
+            if (!over) return;
+            if (active.id !== over.id) { 
+              const o = items.findIndex(i => i.id === active.id); 
+              const n = items.findIndex(i => i.id === over.id); 
               setItems(arrayMove(items, o, n)); 
             } 
           }}>
