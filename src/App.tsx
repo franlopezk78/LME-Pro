@@ -9,6 +9,9 @@ import type { ShoppingItem } from './types';
 import { CATALOG_DATA } from './constants';
 
 // Drag & Drop
+import type {
+  DragEndEvent
+} from '@dnd-kit/core';
 import {
   DndContext, 
   closestCenter,
@@ -16,7 +19,6 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragEndEvent
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -309,7 +311,11 @@ const App: React.FC = () => {
 
   const shareWhatsApp = () => {
     const f = items.filter(i => !i.checked);
-    if (f.length === 0) return;
+    if (f.length === 0) {
+      setError("No hay nada que compartir");
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
     const t = "🛒 *EviShop Premium*\n\n" + f.map(i => `• ${i.quantity > 1 ? `[${i.quantity}] ` : ''}${i.text}`).join('\n');
     window.open("whatsapp://send?text=" + encodeURIComponent(t), '_blank');
   };
