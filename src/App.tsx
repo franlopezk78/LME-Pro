@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Share2, RefreshCw, ShoppingBasket, Edit3, ShoppingCart, 
   Plus, Mic, Trash2, CheckCircle, ChevronDown, 
-  Settings, Brain, Save, Loader2, Trash, 
-  Star, Minus, PlusCircle, GripVertical, ChefHat, Camera, Receipt
+  Settings, Brain, Save, Loader2, 
+  Star, Minus, PlusCircle, GripVertical, ChefHat, Camera
 } from 'lucide-react';
 import type { ShoppingItem, Recipe } from './types';
 import { CATALOG_DATA } from './constants';
@@ -98,7 +98,7 @@ const App: React.FC = () => {
   const trackCategoryCheck = (catName: string) => {
     setCatOrder(prev => {
       const filtered = prev.filter(c => c !== catName);
-      return [...filtered, catName]; // Pone la última categoría tachada al final
+      return [...filtered, catName];
     });
   };
 
@@ -128,7 +128,8 @@ const App: React.FC = () => {
 
   const addItem = (text: string, category?: string) => {
     if (!text.trim()) return;
-    const info = category ? getCategoryInfo(category) : { name: "⚪ Varios", color: "#94a3b8" };
+    const found = CATALOG_DATA.find(c => c.c.toLowerCase().includes((category || "").toLowerCase()));
+    const info = found ? { name: found.c, color: found.col } : { name: "⚪ Varios", color: "#94a3b8" };
     setItems(prev => [{
       id: Math.random().toString(36).substr(2, 9),
       text: text.trim().charAt(0).toUpperCase() + text.trim().slice(1).toLowerCase(),
@@ -140,19 +141,12 @@ const App: React.FC = () => {
     }, ...prev]);
   };
 
-  const getCategoryInfo = (catName: string) => {
-    const found = CATALOG_DATA.find(c => c.c.toLowerCase().includes(catName.toLowerCase()));
-    return found ? { name: found.c, color: found.col } : { name: "⚪ Varios", color: "#94a3b8" };
-  };
-
   const askChef = async () => {
     if (!apiKey) return;
     setIsProcessing(true);
     try {
       const activeItems = items.filter(i => !i.checked).map(i => i.text).join(", ");
-      const prompt = `Sugiere UNA receta creativa con estos ingredientes: ${activeItems}. 
-      Responde SOLO JSON: {"title": "Nombre", "description": "Pasos cortos", "ingredients": ["usa estos"], "missing": ["qué falta"]}`;
-      
+      const prompt = `Sugiere UNA receta creativa con estos ingredientes: ${activeItems}. Responde SOLO JSON: {"title": "Nombre", "description": "Pasos cortos", "ingredients": ["usa estos"], "missing": ["qué falta"]}`;
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey.trim()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -160,7 +154,7 @@ const App: React.FC = () => {
       });
       const data = await response.json();
       setChefRecipe(JSON.parse(data.candidates[0].content.parts[0].text));
-    } catch (e) { setError("El Chef está descansando..."); }
+    } catch (e) { setError("El Chef está descansando..."); setTimeout(() => setError(null), 3000); }
     setIsProcessing(false);
   };
 
@@ -175,23 +169,21 @@ const App: React.FC = () => {
     }
   };
 
-  // Feature 5: Camera / Receipt placeholder (for now just UI, needs file input)
-  const scanReceipt = () => {
-    document.getElementById('receipt-upload')?.click();
-  };
+  const scanReceipt = () => { document.getElementById('receipt-upload')?.click(); };
 
   const handleReceiptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !apiKey) return;
     setIsProcessing(true);
     setError("Analizando ticket...");
-    // Aquí iría el envío de la imagen a Gemini, por ahora simulamos
-    setTimeout(() => {
-      setError(null);
-      setIsProcessing(false);
-      addItem("Cervezas (del ticket)", "Varios");
-      addItem("Pan (del ticket)", "Pan");
-    }, 2000);
+    setTimeout(() => { setError(null); setIsProcessing(false); addItem("Cervezas (del ticket)", "Varios"); }, 2000);
+  };
+
+  const shareWhatsApp = () => {
+    const f = items.filter(i => !i.checked);
+    if (f.length === 0) { setError("Lista vacía"); setTimeout(() => setError(null), 3000); return; }
+    const t = "🛒 *EviShop Premium*\n\n" + f.map(i => `• ${i.quantity > 1 ? `[${i.quantity}] ` : ''}${i.text}`).join('\n');
+    window.open("whatsapp://send?text=" + encodeURIComponent(t), '_blank');
   };
 
   return (
@@ -214,6 +206,14 @@ const App: React.FC = () => {
             </button>
           </div>
         </div>
+        {mode === 'shop' && (
+          <div className={`mt-4 flex justify-between items-center px-4 py-2 bg-gradient-to-r ${activeTheme.from} ${activeTheme.to} rounded-2xl border border-white/20 shadow-lg`}>
+            <p className="text-xs font-bold text-white uppercase tracking-widest">{items.filter(i => i.checked).length} de {items.length} COMPRADOS</p>
+            {items.length > 0 && items.every(i => i.checked) && (
+              <button onClick={() => setItems(items.filter(i => !i.checked))} className="px-3 py-1 bg-white text-slate-900 rounded-lg text-[10px] font-black uppercase shadow-sm">¡LISTO!</button>
+            )}
+          </div>
+        )}
       </header>
 
       {chefRecipe && (
@@ -237,35 +237,51 @@ const App: React.FC = () => {
       )}
 
       <main className="flex-1 p-6 pb-48 overflow-y-auto">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <div className="space-y-3">
-            <SortableContext items={sortedItems.map(i => i.id)} strategy={verticalListSortingStrategy}>
-              {sortedItems.map(item => (
-                <SortableItem key={item.id} item={item} toggleItem={toggleItem} deleteItem={deleteItem} updateQuantity={updateQuantity} toggleFavorite={toggleFavorite} mode={mode} activeTheme={activeTheme} />
-              ))}
-            </SortableContext>
+        {items.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-6 opacity-30 animate-fade-in">
+            <div className="p-8 rounded-full bg-slate-200 dark:bg-slate-800">
+              <ShoppingBasket size={80} strokeWidth={1} />
+            </div>
+            <p className="text-xl font-bold">Tu cesta está vacía</p>
           </div>
-        </DndContext>
+        ) : (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <div className="space-y-3">
+              <SortableContext items={sortedItems.map(i => i.id)} strategy={verticalListSortingStrategy}>
+                {sortedItems.map(item => (
+                  <SortableItem key={item.id} item={item} toggleItem={toggleItem} deleteItem={deleteItem} updateQuantity={updateQuantity} toggleFavorite={toggleFavorite} mode={mode} activeTheme={activeTheme} />
+                ))}
+              </SortableContext>
+            </div>
+          </DndContext>
+        )}
       </main>
 
-      {mode === 'edit' && (
-        <nav className="fixed bottom-0 inset-x-0 p-6 flex flex-col items-center gap-6 pointer-events-none z-40">
-          <div className="w-full max-w-sm flex gap-3 pointer-events-auto">
-            <button onClick={() => setIsCatalogOpen(!isCatalogOpen)} className={`p-4 rounded-3xl glass-panel shadow-2xl transition-all ${isCatalogOpen ? activeTheme.bg + ' text-white border-0' : 'text-slate-500'}`}><ShoppingCart size={24} /></button>
-            <div className="flex-1 flex glass-panel rounded-3xl overflow-hidden shadow-2xl pl-2">
-              <input type="text" value={manualInput} onChange={(e) => setManualInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && (addItem(manualInput), setManualInput(''))} placeholder="¿Qué quieres hoy?" className="flex-1 px-4 bg-transparent outline-none font-bold" />
-              <button onClick={() => { addItem(manualInput); setManualInput(''); }} className={`p-4 bg-slate-100 dark:bg-slate-800 ${activeTheme.text}`}><Plus size={24} strokeWidth={3} /></button>
-            </div>
+      <nav className="fixed bottom-0 inset-x-0 p-6 flex flex-col items-center gap-6 pointer-events-none z-40">
+        <div className="w-full max-w-sm flex gap-3 pointer-events-auto">
+          <button onClick={() => setIsCatalogOpen(!isCatalogOpen)} className={`p-4 rounded-3xl glass-panel shadow-2xl transition-all ${isCatalogOpen ? activeTheme.bg + ' text-white border-0' : 'text-slate-500'}`}><ShoppingCart size={24} /></button>
+          <div className="flex-1 flex glass-panel rounded-3xl overflow-hidden shadow-2xl pl-2">
+            <input type="text" value={manualInput} onChange={(e) => setManualInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && (addItem(manualInput), setManualInput(''))} placeholder="¿Qué quieres hoy?" className="flex-1 px-4 bg-transparent outline-none font-bold" />
+            <button onClick={() => { addItem(manualInput); setManualInput(''); }} className={`p-4 bg-slate-100 dark:bg-slate-800 ${activeTheme.text}`}><Plus size={24} strokeWidth={3} /></button>
           </div>
-          <button onClick={toggleListening} className={`w-20 h-20 rounded-[2.5rem] flex items-center justify-center shadow-2xl pointer-events-auto transition-all duration-300 ${isListening ? 'bg-red-500' : `bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} ${activeTheme.shadow}`}`}><Mic size={36} className="text-white" /></button>
-        </nav>
-      )}
+          <button onClick={() => setMode(mode === 'edit' ? 'shop' : 'edit')} className={`p-4 rounded-3xl shadow-lg active:scale-95 transition-all ${mode === 'edit' ? `bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} text-white shadow-violet-500/30` : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>
+            {mode === 'edit' ? <Edit3 size={24} strokeWidth={2.5} /> : <ShoppingBasket size={24} strokeWidth={2.5} />}
+          </button>
+        </div>
+        {mode === 'edit' && (
+          <div className="flex gap-4 pointer-events-auto">
+            <button onClick={() => { if(confirm("¿Vaciar?")) setItems([]); }} className="p-4 rounded-3xl glass-panel text-slate-500 shadow-xl"><RefreshCw size={24} /></button>
+            <button onClick={() => recognitionRef.current?.start()} className={`w-20 h-20 rounded-[2.5rem] flex items-center justify-center shadow-2xl transition-all ${isListening ? 'bg-red-500' : `bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} ${activeTheme.shadow}`}`}><Mic size={36} className="text-white" /></button>
+            <button onClick={shareWhatsApp} className="p-4 rounded-3xl bg-green-500 text-white shadow-xl"><Share2 size={24} /></button>
+          </div>
+        )}
+      </nav>
 
       {showSettings && (
         <section className="absolute inset-0 bg-white/95 dark:bg-[#0B0F19]/95 backdrop-blur-2xl z-50 p-8 flex flex-col gap-6 animate-slide-up">
           <div className="flex items-center gap-4 mt-4">
             <div className={`p-4 rounded-3xl bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} shadow-lg ${activeTheme.shadow} text-white`}><Brain size={32} /></div>
-            <div><h2 className="text-3xl font-bold">EviShop Pro</h2><p className="text-slate-500 font-medium">Configuración de IA</p></div>
+            <div><h2 className="text-3xl font-bold">EviShop Pro</h2><p className="text-slate-500 font-medium">Versión {APP_VERSION}</p></div>
           </div>
           <div className="space-y-3 mt-6">
             <label className="text-sm font-bold text-violet-500 uppercase tracking-widest">Llave Gemini (API Key)</label>
@@ -277,8 +293,22 @@ const App: React.FC = () => {
               {['violet', 'blue', 'emerald', 'rose', 'amber'].map(t => <button key={t} onClick={() => setThemeColor(t)} className={`w-10 h-10 rounded-full bg-gradient-to-br ${themes[t].from} ${themes[t].to} ${themeColor === t ? 'ring-4 ring-slate-200' : ''}`} />)}
             </div>
           </div>
-          <button onClick={nukeCache} className="mt-6 flex items-center justify-center gap-2 p-5 bg-red-50 text-red-600 rounded-3xl font-bold text-sm">RESTAURAR APLICACIÓN</button>
-          <button onClick={() => setShowSettings(false)} className={`mt-auto w-full py-5 bg-gradient-to-r ${activeTheme.from} ${activeTheme.to} text-white rounded-3xl font-bold text-lg`}>GUARDAR Y CERRAR</button>
+          <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="mt-6 flex items-center justify-center gap-2 p-5 bg-red-50 text-red-600 rounded-3xl font-bold text-sm">RESTAURAR APLICACIÓN</button>
+          <button onClick={() => setShowSettings(false)} className={`mt-auto w-full py-5 bg-gradient-to-r ${activeTheme.from} ${activeTheme.to} text-white rounded-3xl font-bold text-lg flex items-center justify-center gap-3 shadow-xl`}><Save size={24} /> GUARDAR Y CERRAR</button>
+        </section>
+      )}
+
+      {isCatalogOpen && (
+        <section className="absolute inset-x-0 top-20 bottom-0 bg-white/95 dark:bg-[#0B0F19]/95 backdrop-blur-2xl z-30 p-4 overflow-y-auto animate-slide-up pb-48">
+          <button onClick={() => setIsCatalogOpen(false)} className="w-full py-3 bg-violet-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 sticky top-0 z-10 mb-4 shadow-xl">CERRAR <ChevronDown /></button>
+          {CATALOG_DATA.map(cat => (
+            <div key={cat.c} className="mb-6">
+              <h3 className="text-xs font-black text-slate-400 uppercase mb-3 pl-2 tracking-widest">{cat.c}</h3>
+              <div className="grid grid-cols-3 gap-2">
+                {cat.items.map(i => <button key={i.n} onClick={() => addItem(i.n)} className="flex flex-col items-center p-3 glass-panel rounded-3xl active:scale-95 transition-transform"><span className="text-2xl">{i.e}</span><span className="text-[10px] text-center font-bold mt-1">{i.n}</span></button>)}
+              </div>
+            </div>
+          ))}
         </section>
       )}
 
@@ -286,7 +316,7 @@ const App: React.FC = () => {
         <div className="fixed inset-0 bg-violet-500/20 backdrop-blur-md z-50 flex items-center justify-center">
           <div className="bg-white dark:bg-slate-800 p-8 rounded-[3rem] shadow-2xl flex flex-col items-center gap-4">
             <Loader2 className="w-10 h-10 text-violet-500 animate-spin" strokeWidth={3} />
-            <p className="font-black text-violet-500 uppercase tracking-widest text-sm">Evi está pensando...</p>
+            <p className="font-black text-violet-500 uppercase tracking-widest text-sm text-center">Evi está pensando...</p>
           </div>
         </div>
       )}
