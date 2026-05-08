@@ -168,6 +168,27 @@ const App: React.FC = () => {
     parts.forEach(p => addItem(p.trim()));
   };
 
+  const toggleItem = (id: string) => {
+    setItems(prev => prev.map(i => i.id === id ? { ...i, checked: !i.checked } : i));
+    if (navigator.vibrate) navigator.vibrate(20);
+  };
+
+  const deleteItem = (id: string) => {
+    setItems(prev => prev.filter(i => i.id !== id));
+    if (navigator.vibrate) navigator.vibrate([10, 30, 10]);
+  };
+
+  const shareWhatsApp = () => {
+    const f = items.filter(i => !i.checked);
+    if (f.length === 0) {
+      setError("La lista está vacía");
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+    const t = "🛒 *Lista de Los Mandaos de Evi*\n\n" + f.map(i => `• ${i.text}`).join('\n');
+    window.open("whatsapp://send?text=" + encodeURIComponent(t), '_blank');
+  };
+
   const nukeCache = () => {
     if (confirm("Esto borrará la caché y reiniciará la app para actualizarla. ¿Continuar?")) {
       localStorage.clear();
