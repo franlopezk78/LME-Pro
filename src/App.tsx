@@ -384,8 +384,14 @@ const App: React.FC = () => {
           </button>
           <div className="mt-auto text-center space-y-6 pb-6">
             <p className="text-[10px] text-slate-400 font-mono opacity-50">Core: {APP_VERSION}</p>
-            <button onClick={() => setShowSettings(false)} className="w-full py-5 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-3xl font-bold text-lg flex items-center justify-center gap-3 shadow-xl">
-              CERRAR AJUSTES <Save size={24} />
+            <button 
+              onClick={() => {
+                localStorage.setItem('lme_gemini_key', apiKey.trim());
+                setShowSettings(false);
+              }} 
+              className="w-full py-5 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-3xl font-bold text-lg flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-transform"
+            >
+              GUARDAR Y CERRAR <Save size={24} />
             </button>
           </div>
         </section>
