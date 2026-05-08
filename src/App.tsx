@@ -132,37 +132,41 @@ const App: React.FC = () => {
     try {
       const prompt = `Eres un asistente de lista de la compra. Tu trabajo es extraer TODOS los productos individuales del texto.
       Reglas estrictas:
-      1. Si mencionan varios productos (ej: "tomates cebollas lechuga"), debes separarlos en elementos distintos.
+      1. Si mencionan varios productos (ej: "tomates cebollas lechuga"), separalos en elementos distintos.
       2. Si mencionan una receta, extrae sus ingredientes básicos.
-      3. Ignora palabras de relleno ("apunta", "necesito", "compra").
-      
-      Devuelve SOLO un JSON estricto con este formato: {"items": [{"name": "nombre del producto", "category": "Categoría"}]}
+      3. Devuelve SOLO un JSON válido con este formato: {"items": [{"name": "producto", "category": "Categoría"}]}
       Categorías permitidas: Verduras, Frutas, Carne, Pescado, Lácteos, Charcutería, Despensa, Pan, Limpieza, Mascotas, Varios.
       Texto a analizar: "${t}"`;
 
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        body: JSON.stringify({ 
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { response_mime_type: "application/json" }
+        })
       });
 
       const data = await response.json();
-      if (data.error) throw new Error(data.error.message);
+      if (data.error) throw new Error(data.error.message || "API Error");
 
       let textResponse = data.candidates[0].content.parts[0].text;
-      textResponse = textResponse.replace(/```json|```/g, "").trim();
-      const result = JSON.parse(textResponse);
+      const result = JSON.parse(textResponse.trim());
       
-      if (result.items) {
+      if (result.items && Array.isArray(result.items)) {
         result.items.forEach((i: any) => addItem(i.name, i.category));
       } else {
-        processVoiceBasic(t);
+        throw new Error("Formato IA incorrecto");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       processVoiceBasic(t);
-      setError("Error IA. Verifica tu llave en ajustes.");
-      setTimeout(() => setError(null), 3000);
+      // Extraemos solo el mensaje de error real para que quepa en la pantalla
+      let msg = err.message || "Error desconocido";
+      if (msg.includes("API key not valid")) msg = "Llave incorrecta";
+      if (msg.includes("Unexpected token")) msg = "La IA se ha confundido al responder";
+      setError(`⚠️ IA: ${msg.substring(0, 40)}`);
+      setTimeout(() => setError(null), 4000);
     } finally {
       setIsProcessing(false);
       setTranscript('');
