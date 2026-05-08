@@ -18,7 +18,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-const SortableItem = ({ item, toggleItem, deleteItem, updateQuantity, toggleFavorite, mode, activeTheme }: any) => {
+const SortableItem = ({ item, toggleItem, deleteItem, updateQuantity, toggleFavorite, activeTheme }: any) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
   const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 50 : 'auto' };
 
@@ -307,7 +307,7 @@ const App: React.FC = () => {
             <div className="space-y-3">
               <SortableContext items={sortedItems.map(i => i.id)} strategy={verticalListSortingStrategy}>
                 {sortedItems.map(item => (
-                  <SortableItem key={item.id} item={item} toggleItem={(id: string) => setItems(prev => prev.map(i => i.id === id ? { ...i, checked: !i.checked } : i))} deleteItem={(id: string) => setItems(prev => prev.filter(i => i.id !== id))} updateQuantity={(id: string, d: number) => setItems(prev => prev.map(i => i.id === id ? { ...i, quantity: Math.max(1, (i.quantity || 1) + d) } : i))} toggleFavorite={(id: string) => setItems(prev => prev.map(i => i.id === id ? { ...i, isFavorite: !i.isFavorite } : i))} mode={mode} activeTheme={activeTheme} />
+                  <SortableItem key={item.id} item={item} toggleItem={(id: string) => setItems(prev => prev.map(i => i.id === id ? { ...i, checked: !i.checked } : i))} deleteItem={(id: string) => setItems(prev => prev.filter(i => i.id !== id))} updateQuantity={(id: string, d: number) => setItems(prev => prev.map(i => i.id === id ? { ...i, quantity: Math.max(1, (i.quantity || 1) + d) } : i))} toggleFavorite={(id: string) => setItems(prev => prev.map(i => i.id === id ? { ...i, isFavorite: !i.isFavorite } : i))} activeTheme={activeTheme} />
                 ))}
               </SortableContext>
             </div>
