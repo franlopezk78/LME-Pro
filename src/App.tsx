@@ -67,7 +67,7 @@ const SortableItem = ({ item, toggleItem, deleteItem, updateQuantity, toggleFavo
 };
 
 const App: React.FC = () => {
-  const APP_VERSION = "8.0 - Pro Manager";
+  const APP_VERSION = "8.1 - Shop Mode Final";
   
   const [items, setItems] = useState<ShoppingItem[]>(() => JSON.parse(localStorage.getItem('lme_items_pro') || '[]'));
   const [apiKey, setApiKey] = useState<string>(localStorage.getItem('lme_gemini_key') || '');
@@ -285,6 +285,7 @@ const App: React.FC = () => {
       setItems(listItems);
       setIsCatalogOpen(false);
       setShowSettings(false);
+      setMode('edit');
     }
   };
 
@@ -303,14 +304,16 @@ const App: React.FC = () => {
     <div className={`min-h-screen max-w-lg mx-auto relative flex flex-col font-sans transition-colors duration-500 ${isDark ? 'bg-[#0B0F19]' : 'bg-slate-50'}`}>
       <header className="p-6 glass-header sticky top-0 z-40 transition-all duration-300">
         <div className="flex items-center justify-between gap-4">
-          <button onClick={() => document.getElementById('ticket-input')?.click()} className={`p-2.5 rounded-2xl bg-white dark:bg-slate-800 shadow-lg ${activeTheme.text} active:scale-90 transition-transform`}>
-            <Camera size={22} strokeWidth={2.5} />
-            <input id="ticket-input" type="file" accept="image/*" capture="environment" className="hidden" onChange={handleReceiptUpload} />
-          </button>
+          {mode === 'edit' && (
+            <button onClick={() => document.getElementById('ticket-input')?.click()} className={`p-2.5 rounded-2xl bg-white dark:bg-slate-800 shadow-lg ${activeTheme.text} active:scale-90 transition-transform`}>
+              <Camera size={22} strokeWidth={2.5} />
+              <input id="ticket-input" type="file" accept="image/*" capture="environment" className="hidden" onChange={handleReceiptUpload} />
+            </button>
+          )}
           
           <button 
             onClick={() => { setShowSettings(false); setIsCatalogOpen(false); setMode('edit'); }}
-            className="text-center flex-1 active:scale-95 transition-transform"
+            className={`text-center flex-1 active:scale-95 transition-transform ${mode === 'shop' ? 'ml-0' : ''}`}
           >
             <h1 className="text-2xl font-extrabold tracking-tight dark:text-white">Evi<span className={`text-transparent bg-clip-text bg-gradient-to-r ${activeTheme.from} ${activeTheme.to}`}>Shop</span></h1>
           </button>
@@ -324,7 +327,7 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      <main className={`flex-1 p-6 overflow-y-auto ${mode === 'edit' ? 'pb-48' : 'pb-24'}`}>
+      <main className={`flex-1 p-6 overflow-y-auto ${mode === 'edit' ? 'pb-48' : 'pb-10'}`}>
         {items.length === 0 ? <div className="h-full flex flex-col items-center justify-center text-slate-300 dark:text-slate-700 opacity-30 gap-4"><ShoppingBasket size={80} /><p className="text-xl font-bold">Cesta vacía</p></div> : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e: DragEndEvent) => { 
             const { active, over } = e;
