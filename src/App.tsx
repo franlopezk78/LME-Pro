@@ -130,9 +130,15 @@ const App: React.FC = () => {
 
     setIsProcessing(true);
     try {
-      const prompt = `Actúa como lista de compra. Texto: "${t}". 
-      Responde SOLO un JSON: {"items": [{"name": "producto", "category": "Categoría"}]}
-      Categorías: Verduras, Frutas, Carne, Pescado, Lácteos, Charcutería, Despensa, Pan, Limpieza, Mascotas, Varios.`;
+      const prompt = `Eres un asistente de lista de la compra. Tu trabajo es extraer TODOS los productos individuales del texto.
+      Reglas estrictas:
+      1. Si mencionan varios productos (ej: "tomates cebollas lechuga"), debes separarlos en elementos distintos.
+      2. Si mencionan una receta, extrae sus ingredientes básicos.
+      3. Ignora palabras de relleno ("apunta", "necesito", "compra").
+      
+      Devuelve SOLO un JSON estricto con este formato: {"items": [{"name": "nombre del producto", "category": "Categoría"}]}
+      Categorías permitidas: Verduras, Frutas, Carne, Pescado, Lácteos, Charcutería, Despensa, Pan, Limpieza, Mascotas, Varios.
+      Texto a analizar: "${t}"`;
 
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`, {
         method: 'POST',
@@ -164,8 +170,25 @@ const App: React.FC = () => {
   };
 
   const processVoiceBasic = (t: string) => {
-    const parts = t.split(/ y |,|\.|\n/i);
-    parts.forEach(p => addItem(p.trim()));
+    const rawParts = t.split(/ y |,|\.|\n/i);
+    rawParts.forEach(part => {
+      const words = part.trim().split(/\s+/);
+      if (words.length === 0) return;
+      let currentB: string[] = [];
+      const conn = ['de', 'con', 'sin', 'para', 'la', 'el', 'en', 'un', 'una', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'del', 'al', 'los', 'las', 'kilo', 'gramos', 'litros', 'paquete', 'bolsa'];
+      words.forEach((word, index) => {
+        const w = word.toLowerCase();
+        if (index === 0) currentB.push(word);
+        else {
+          if (conn.includes(w) || conn.includes(words[index - 1].toLowerCase()) || w.length <= 2) currentB.push(word);
+          else {
+            addItem(currentB.join(" "));
+            currentB = [word];
+          }
+        }
+      });
+      if (currentB.length > 0) addItem(currentB.join(" "));
+    });
   };
 
   const toggleItem = (id: string) => {
