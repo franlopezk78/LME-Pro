@@ -213,7 +213,13 @@ const App: React.FC = () => {
 
       <main className="flex-1 p-6 pb-48 overflow-y-auto">
         {items.length === 0 ? <div className="h-full flex flex-col items-center justify-center text-slate-300 opacity-30 gap-4"><ShoppingBasket size={80} /><p className="text-xl font-bold">Lista vacía</p></div> : (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => { if (e.over && e.active.id !== e.over.id) { const o = items.findIndex(i => i.id === e.active.id); const n = items.findIndex(i => i.id === e.over.id); setItems(arrayMove(items, o, n)); } }}>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e: DragEndEvent) => { 
+            if (e.over && e.active.id !== e.over.id) { 
+              const o = items.findIndex(i => i.id === e.active.id); 
+              const n = items.findIndex(i => i.id === e.over.id); 
+              setItems(arrayMove(items, o, n)); 
+            } 
+          }}>
             <div className="space-y-3">
               <SortableContext items={sortedItems.map(i => i.id)} strategy={verticalListSortingStrategy}>
                 {sortedItems.map(item => (
