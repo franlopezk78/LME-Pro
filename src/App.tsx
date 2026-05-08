@@ -191,41 +191,44 @@ const App: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file || !apiKey) return;
     setIsProcessing(true);
-    setError("Evi leyendo ticket...");
     
     try {
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const base64 = (reader.result as string).split(',')[1];
-        const prompt = `Analiza este ticket de compra. Extrae los productos, sus nombres limpios, su categoría y SU PRECIO UNITARIO. Devuelve SOLO JSON: {"items": [{"name": "producto", "category": "Categoría", "price": 0.0}]}`;
-        
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey.trim()}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{
-              parts: [
-                { text: prompt },
-                { inline_data: { mime_type: file.type, data: base64 } }
-              ]
-            }],
-            generationConfig: { response_mime_type: "application/json" }
-          })
-        });
+        try {
+          const base64 = (reader.result as string).split(',')[1];
+          const prompt = `Analiza este ticket de compra. Extrae los productos, sus nombres limpios, su categoría y SU PRECIO UNITARIO. Devuelve SOLO JSON: {"items": [{"name": "producto", "category": "Categoría", "price": 0.0}]}`;
+          
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey.trim()}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{
+                parts: [
+                  { text: prompt },
+                  { inline_data: { mime_type: file.type, data: base64 } }
+                ]
+              }],
+              generationConfig: { response_mime_type: "application/json" }
+            })
+          });
 
-        const data = await response.json();
-        let res = data.candidates[0].content.parts[0].text.replace(/```json|```/g, "").trim();
-        const result = JSON.parse(res);
-        result.items.forEach((i: any) => addItem(i.name, i.category, i.price));
-        setError("¡Ticket analizado!");
-        setTimeout(() => setError(null), 3000);
+          const data = await response.json();
+          let res = data.candidates[0].content.parts[0].text.replace(/```json|```/g, "").trim();
+          const result = JSON.parse(res);
+          result.items.forEach((i: any) => addItem(i.name, i.category, i.price));
+        } catch (err) {
+          setError("Error analizando el ticket");
+          setTimeout(() => setError(null), 3000);
+        } finally {
+          setIsProcessing(false);
+        }
       };
       reader.readAsDataURL(file);
     } catch (err) {
       setError("Error al leer el ticket");
-      setTimeout(() => setError(null), 3000);
-    } finally {
       setIsProcessing(false);
+      setTimeout(() => setError(null), 3000);
     }
   };
 
