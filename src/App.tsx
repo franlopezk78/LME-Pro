@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Share2, RefreshCw, ShoppingBasket, Edit3, ShoppingCart, 
   Plus, Mic, Trash2, CheckCircle, ChevronDown, 
-  Settings, Brain, Save, Loader2, Trash, 
+  Settings, Brain, Save, Loader2, 
   Star, Minus, PlusCircle, GripVertical, Camera
 } from 'lucide-react';
 import type { ShoppingItem } from './types';
