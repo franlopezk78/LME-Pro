@@ -50,22 +50,20 @@ const SortableItem = ({ item, toggleItem, deleteItem, updateQuantity, toggleFavo
       </div>
       <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800/50">
         <div className="flex items-center gap-3">
-          {mode === 'edit' && <button {...attributes} {...listeners} className="text-slate-300 dark:text-slate-600"><GripVertical size={18} /></button>}
+          <button {...attributes} {...listeners} className="text-slate-300 dark:text-slate-600"><GripVertical size={18} /></button>
           <span className="text-[10px] font-black uppercase tracking-[0.15em] px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800" style={{ color: item.catColor }}>{item.catName}</span>
         </div>
-        {mode === 'edit' && (
-          <div className="flex items-center gap-1">
-            <button onClick={() => toggleFavorite(item.id)} className={`p-2 rounded-xl transition-colors ${item.isFavorite ? 'bg-amber-400/10 text-amber-500' : 'text-slate-300 dark:text-slate-600'}`}><Star size={20} className={item.isFavorite ? 'fill-amber-500' : ''} /></button>
-            <button onClick={() => deleteItem(item.id)} className="p-2 rounded-xl text-slate-300 dark:text-slate-600 hover:bg-red-500/10 hover:text-red-500 transition-colors"><Trash2 size={20} /></button>
-          </div>
-        )}
+        <div className="flex items-center gap-1">
+          <button onClick={() => toggleFavorite(item.id)} className={`p-2 rounded-xl transition-colors ${item.isFavorite ? 'bg-amber-400/10 text-amber-500' : 'text-slate-300 dark:text-slate-600'}`}><Star size={20} className={item.isFavorite ? 'fill-amber-500' : ''} /></button>
+          <button onClick={() => deleteItem(item.id)} className="p-2 rounded-xl text-slate-300 dark:text-slate-600 hover:bg-red-500/10 hover:text-red-500 transition-colors"><Trash2 size={20} /></button>
+        </div>
       </div>
     </div>
   );
 };
 
 const App: React.FC = () => {
-  const APP_VERSION = "7.0 - EviShop Price Intel";
+  const APP_VERSION = "7.2 - Dark & Fixed";
   
   const [items, setItems] = useState<ShoppingItem[]>(() => JSON.parse(localStorage.getItem('lme_items_pro') || '[]'));
   const [apiKey, setApiKey] = useState<string>(localStorage.getItem('lme_gemini_key') || '');
@@ -89,10 +87,16 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem('lme_gemini_key', apiKey.trim()); }, [apiKey]);
   useEffect(() => { localStorage.setItem('lme_theme_color', themeColor); }, [themeColor]);
   useEffect(() => { localStorage.setItem('lme_price_history', JSON.stringify(priceHistory)); }, [priceHistory]);
+  
   useEffect(() => {
     localStorage.setItem('lme_dark_mode', isDark.toString());
-    if (isDark) document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+      document.body.style.backgroundColor = '#0B0F19';
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.body.style.backgroundColor = '#F8FAFC';
+    }
   }, [isDark]);
 
   const themes: Record<string, any> = {
@@ -147,7 +151,6 @@ const App: React.FC = () => {
     if (!text.trim()) return;
     const cleanText = text.trim().charAt(0).toUpperCase() + text.trim().slice(1).toLowerCase();
     
-    // Si no viene categoría, intentamos adivinarla buscando en el catálogo local
     let finalCat = "⚪ Varios";
     let finalColor = "#94a3b8";
 
@@ -263,23 +266,25 @@ const App: React.FC = () => {
 
   const sortedItems = [...items].sort((a, b) => {
     if (a.checked !== b.checked) return a.checked ? 1 : -1;
-    return 0; // Mantiene el orden original entre elementos del mismo estado
+    return 0;
   });
 
   return (
-    <div className={`min-h-screen max-w-lg mx-auto relative flex flex-col font-sans ${mode === 'edit' ? 'edit-mode' : 'shop-mode'}`}>
+    <div className={`min-h-screen max-w-lg mx-auto relative flex flex-col font-sans transition-colors duration-500 ${isDark ? 'bg-[#0B0F19]' : 'bg-slate-50'}`}>
       <header className="p-6 glass-header sticky top-0 z-40 transition-all duration-300">
         <div className="flex items-center justify-between gap-4">
           <button onClick={() => document.getElementById('ticket-input')?.click()} className={`p-2.5 rounded-2xl bg-white dark:bg-slate-800 shadow-lg ${activeTheme.text} active:scale-90 transition-transform`}>
             <Camera size={22} strokeWidth={2.5} />
             <input id="ticket-input" type="file" accept="image/*" capture="environment" className="hidden" onChange={handleReceiptUpload} />
           </button>
-          <div 
+          
+          <button 
             onClick={() => { setShowSettings(false); setIsCatalogOpen(false); }}
-            className="text-center flex-1 cursor-pointer active:scale-95 transition-transform"
+            className="text-center flex-1 active:scale-95 transition-transform"
           >
-            <h1 className="text-2xl font-extrabold tracking-tight">Evi<span className={`text-transparent bg-clip-text bg-gradient-to-r ${activeTheme.from} ${activeTheme.to}`}>Shop</span></h1>
-          </div>
+            <h1 className="text-2xl font-extrabold tracking-tight dark:text-white">Evi<span className={`text-transparent bg-clip-text bg-gradient-to-r ${activeTheme.from} ${activeTheme.to}`}>Shop</span></h1>
+          </button>
+
           <div className="flex gap-2 justify-end">
             <button onClick={() => setShowSettings(!showSettings)} className="p-2.5 rounded-2xl bg-white dark:bg-slate-800 text-slate-500 shadow-lg"><Settings size={20} /></button>
             <button onClick={() => setMode(mode === 'edit' ? 'shop' : 'edit')} className={`p-2.5 rounded-2xl shadow-lg transition-all ${mode === 'edit' ? `bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} text-white` : 'bg-slate-200 dark:bg-slate-800 text-slate-500'}`}>
@@ -290,7 +295,7 @@ const App: React.FC = () => {
       </header>
 
       <main className="flex-1 p-6 pb-48 overflow-y-auto">
-        {items.length === 0 ? <div className="h-full flex flex-col items-center justify-center text-slate-300 opacity-30 gap-4"><ShoppingBasket size={80} /><p className="text-xl font-bold">Cesta vacía</p></div> : (
+        {items.length === 0 ? <div className="h-full flex flex-col items-center justify-center text-slate-300 dark:text-slate-700 opacity-30 gap-4"><ShoppingBasket size={80} /><p className="text-xl font-bold">Cesta vacía</p></div> : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e: DragEndEvent) => { 
             const { active, over } = e;
             if (over && active.id !== over.id) { 
@@ -324,34 +329,34 @@ const App: React.FC = () => {
         <div className="w-full max-w-sm flex gap-3 pointer-events-auto">
           <button onClick={() => setIsCatalogOpen(!isCatalogOpen)} className={`p-4 rounded-3xl glass-panel shadow-2xl transition-all ${isCatalogOpen ? activeTheme.bg + ' text-white border-0' : 'text-slate-500'}`}><ShoppingCart size={24} /></button>
           <div className="flex-1 flex glass-panel rounded-3xl overflow-hidden shadow-2xl pl-2">
-            <input type="text" value={manualInput} onChange={(e) => setManualInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && (addItem(manualInput), setManualInput(''))} placeholder="¿Qué compras?" className="flex-1 px-4 bg-transparent outline-none font-bold" />
+            <input type="text" value={manualInput} onChange={(e) => setManualInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && (addItem(manualInput), setManualInput(''))} placeholder="¿Qué compras?" className="flex-1 px-4 bg-transparent outline-none font-bold dark:text-white" />
             <button onClick={() => { addItem(manualInput); setManualInput(''); }} className={`p-4 bg-slate-100 dark:bg-slate-800 ${activeTheme.text}`}><Plus size={24} /></button>
           </div>
         </div>
-        {mode === 'edit' && (
-          <div className="flex gap-4 pointer-events-auto">
-            <button onClick={() => { if(confirm("¿Vaciar?")) setItems([]); }} className="p-4 rounded-3xl glass-panel text-slate-500 shadow-xl"><RefreshCw size={24} /></button>
-            <button onClick={toggleListening} className={`w-20 h-20 rounded-[2.5rem] flex items-center justify-center shadow-2xl transition-all ${isListening ? 'bg-red-500' : `bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} ${activeTheme.shadow}`}`}><Mic size={36} className="text-white" /></button>
-            <button onClick={shareWhatsApp} className="p-4 rounded-3xl bg-green-500 text-white shadow-xl"><Share2 size={24} /></button>
-          </div>
-        )}
+        <div className="flex gap-4 pointer-events-auto">
+          <button onClick={() => { if(confirm("¿Vaciar?")) setItems([]); }} className="p-4 rounded-3xl glass-panel text-slate-500 shadow-xl"><RefreshCw size={24} /></button>
+          <button onClick={toggleListening} className={`w-20 h-20 rounded-[2.5rem] flex items-center justify-center shadow-2xl transition-all ${isListening ? 'bg-red-500' : `bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} ${activeTheme.shadow}`}`}><Mic size={36} className="text-white" /></button>
+          <button onClick={shareWhatsApp} className="p-4 rounded-3xl bg-green-500 text-white shadow-xl"><Share2 size={24} /></button>
+        </div>
       </nav>
 
       {showSettings && (
-        <section className="absolute inset-0 bg-white/95 dark:bg-[#0B0F19]/95 backdrop-blur-2xl z-[80] p-8 flex flex-col gap-6 animate-slide-up">
+        <section className="absolute inset-0 bg-white/95 dark:bg-[#0B0F19]/95 backdrop-blur-2xl z-[80] p-8 flex flex-col gap-6 animate-slide-up overflow-y-auto">
           <div className="flex items-center gap-4 mt-4">
             <div className={`p-4 rounded-3xl bg-gradient-to-br ${activeTheme.from} ${activeTheme.to} shadow-lg ${activeTheme.shadow} text-white`}><Brain size={32} /></div>
-            <div><h2 className="text-3xl font-bold">EviShop Pro</h2><p className="text-slate-500 font-medium">v{APP_VERSION}</p></div>
+            <div><h2 className="text-3xl font-bold dark:text-white">EviShop Pro</h2><p className="text-slate-500 font-medium">v{APP_VERSION}</p></div>
           </div>
-          <div className="space-y-2"><label className="text-xs font-black uppercase text-slate-400">Gemini API Key</label><input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="AIza..." className="w-full p-5 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200" /></div>
-          <div className="space-y-2"><label className="text-xs font-black uppercase text-slate-400">Color App</label><div className="flex justify-between gap-2 p-4 bg-white dark:bg-slate-800 rounded-3xl">{['violet', 'blue', 'emerald', 'rose', 'amber'].map(t => <button key={t} onClick={() => setThemeColor(t)} className={`w-10 h-10 rounded-full bg-gradient-to-br ${themes[t].from} ${themes[t].to} ${themeColor === t ? 'ring-4 ring-slate-200' : ''}`} />)}</div></div>
-          <div className="flex items-center justify-between p-5 bg-white dark:bg-slate-800 rounded-3xl">
-            <span className="text-sm font-bold">Modo Oscuro</span>
+          <div className="space-y-2"><label className="text-xs font-black uppercase text-slate-400">Gemini API Key</label><input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="AIza..." className="w-full p-5 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 dark:text-white" /></div>
+          <div className="space-y-2"><label className="text-xs font-black uppercase text-slate-400">Color App</label><div className="flex justify-between gap-2 p-4 bg-white dark:bg-slate-800 rounded-3xl border dark:border-slate-700">{['violet', 'blue', 'emerald', 'rose', 'amber'].map(t => <button key={t} onClick={() => setThemeColor(t)} className={`w-10 h-10 rounded-full bg-gradient-to-br ${themes[t].from} ${themes[t].to} ${themeColor === t ? 'ring-4 ring-slate-200 dark:ring-slate-600' : ''}`} />)}</div></div>
+          
+          <div className="flex items-center justify-between p-5 bg-white dark:bg-slate-800 rounded-3xl border dark:border-slate-700">
+            <span className="text-sm font-bold dark:text-white">Modo Oscuro</span>
             <button onClick={() => setIsDark(!isDark)} className={`w-14 h-8 rounded-full transition-all relative ${isDark ? 'bg-violet-500' : 'bg-slate-200'}`}>
               <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all ${isDark ? 'left-7' : 'left-1'}`} />
             </button>
           </div>
-          <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="mt-4 p-5 bg-red-50 text-red-600 rounded-3xl font-bold text-xs">RESTAURAR APLICACIÓN</button>
+
+          <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="mt-4 p-5 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-3xl font-bold text-xs">RESTAURAR APLICACIÓN</button>
           <button onClick={() => setShowSettings(false)} className={`mt-auto w-full py-5 bg-gradient-to-r ${activeTheme.from} ${activeTheme.to} text-white rounded-3xl font-bold flex items-center justify-center gap-3 shadow-xl`}><Save size={24} /> GUARDAR</button>
         </section>
       )}
@@ -360,7 +365,7 @@ const App: React.FC = () => {
         <section className="absolute inset-x-0 top-20 bottom-0 bg-white/95 dark:bg-[#0B0F19]/95 backdrop-blur-2xl z-30 p-4 overflow-y-auto animate-slide-up pb-48 text-center">
           <button onClick={() => setIsCatalogOpen(false)} className="w-full py-3 bg-slate-800 text-white rounded-2xl font-bold mb-4 flex items-center justify-center gap-2">CERRAR <ChevronDown /></button>
           {CATALOG_DATA.map(cat => (
-            <div key={cat.c} className="mb-6"><h3 className="text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest">{cat.c}</h3><div className="grid grid-cols-3 gap-2">{cat.items.map(i => <button key={i.n} onClick={() => addItem(i.n)} className="flex flex-col items-center p-3 glass-panel rounded-3xl active:scale-95 transition-transform"><span className="text-2xl">{i.e}</span><span className="text-[10px] font-bold mt-1">{i.n}</span></button>)}</div></div>
+            <div key={cat.c} className="mb-6"><h3 className="text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest">{cat.c}</h3><div className="grid grid-cols-3 gap-2">{cat.items.map(i => <button key={i.n} onClick={() => addItem(i.n)} className="flex flex-col items-center p-3 glass-panel rounded-3xl active:scale-95 transition-transform"><span className="text-2xl">{i.e}</span><span className="text-[10px] font-bold mt-1 dark:text-white">{i.n}</span></button>)}</div></div>
           ))}
         </section>
       )}
