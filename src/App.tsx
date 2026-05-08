@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Share2, RefreshCw, ShoppingBasket, Edit3, ShoppingCart, Plus, Mic, Package, Trash2, CheckCircle, ChevronDown, Settings, Brain, Save, Loader2, Trash } from 'lucide-react';
+import { Share2, RefreshCw, ShoppingBasket, Edit3, ShoppingCart, Plus, Mic, Trash2, CheckCircle, ChevronDown, Settings, Brain, Save, Loader2, Trash } from 'lucide-react';
 import type { ShoppingItem } from './types';
 import { CATALOG_DATA } from './constants';
 
