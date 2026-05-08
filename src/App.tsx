@@ -49,54 +49,59 @@ const SortableItem = ({ item, toggleItem, deleteItem, updateQuantity, toggleFavo
     <div 
       ref={setNodeRef} 
       style={style}
-      className={`group flex items-center gap-4 p-4 rounded-3xl glass-panel transition-all duration-300 ${isDragging ? 'shadow-2xl opacity-80 ring-2 ring-violet-500' : ''} ${item.checked ? 'opacity-40 scale-[0.98]' : 'hover:shadow-lg'}`}
+      className={`group flex flex-col gap-3 p-5 rounded-[2.5rem] glass-panel transition-all duration-300 ${isDragging ? 'shadow-2xl opacity-80 ring-2 ring-violet-500 scale-105' : ''} ${item.checked ? 'opacity-40 scale-[0.98]' : 'hover:shadow-lg'}`}
     >
-      {mode === 'edit' && (
-        <button {...attributes} {...listeners} className="cursor-grab text-slate-300 dark:text-slate-700 hover:text-slate-400">
-          <GripVertical size={20} />
-        </button>
-      )}
-      
-      <div 
-        onClick={() => toggleItem(item.id)}
-        className={`w-7 h-7 rounded-xl border-2 flex items-center justify-center transition-all duration-300 cursor-pointer ${item.checked ? 'bg-slate-400 border-slate-400 scale-90' : 'border-slate-300 dark:border-slate-600'}`}
-      >
-        {item.checked && <CheckCircle size={16} className="text-white" strokeWidth={3} />}
-      </div>
-
-      <div className="flex-1 min-w-0" onClick={() => toggleItem(item.id)}>
-        <p className={`text-[17px] font-semibold truncate transition-all duration-300 ${item.checked ? 'line-through text-slate-500' : ''}`}>
-          {item.text}
-        </p>
-        <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-[10px] font-black uppercase tracking-wider opacity-60" style={{ color: item.catColor }}>{item.catName.split(' ')[1] || item.catName}</span>
-          {item.isFavorite && <Star size={10} className="fill-amber-400 text-amber-400" />}
+      <div className="flex items-center gap-4">
+        <div 
+          onClick={() => toggleItem(item.id)}
+          className={`w-8 h-8 rounded-2xl border-2 flex items-center justify-center transition-all duration-300 cursor-pointer shrink-0 ${item.checked ? 'bg-slate-400 border-slate-400' : 'border-slate-300 dark:border-slate-600'}`}
+        >
+          {item.checked && <CheckCircle size={18} className="text-white" strokeWidth={3} />}
         </div>
-      </div>
 
-      <div className="flex items-center gap-2 bg-slate-100/50 dark:bg-slate-800/50 rounded-2xl p-1">
-        <button onClick={() => updateQuantity(item.id, -1)} className="p-1 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-colors">
-          <Minus size={14} strokeWidth={3} className={item.quantity <= 1 ? 'opacity-20' : ''} />
-        </button>
-        <span className="text-sm font-bold w-4 text-center">{item.quantity}</span>
-        <button onClick={() => updateQuantity(item.id, 1)} className="p-1 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-colors text-violet-500">
-          <PlusCircle size={14} strokeWidth={3} />
-        </button>
-      </div>
+        <div className="flex-1 min-w-0" onClick={() => toggleItem(item.id)}>
+          <p className={`text-lg font-bold transition-all duration-300 leading-tight ${item.checked ? 'line-through text-slate-500 opacity-50' : 'text-slate-800 dark:text-white'}`}>
+            {item.text}
+          </p>
+        </div>
 
-      {mode === 'edit' && (
-        <div className="flex items-center gap-1">
-          <button 
-            onClick={() => toggleFavorite(item.id)}
-            className={`p-2 transition-colors ${item.isFavorite ? 'text-amber-400' : 'text-slate-300 dark:text-slate-700'}`}
-          >
-            <Star size={18} className={item.isFavorite ? 'fill-amber-400' : ''} />
+        <div className="flex items-center gap-2 bg-slate-100/80 dark:bg-slate-800/80 rounded-2xl p-1 shrink-0">
+          <button onClick={() => updateQuantity(item.id, -1)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-xl transition-colors">
+            <Minus size={16} strokeWidth={3} className={item.quantity <= 1 ? 'opacity-20' : ''} />
           </button>
-          <button onClick={() => deleteItem(item.id)} className="p-2 text-slate-300 dark:text-slate-700 hover:text-red-500 transition-colors">
-            <Trash2 size={18} />
+          <span className="text-base font-black w-6 text-center">{item.quantity}</span>
+          <button onClick={() => updateQuantity(item.id, 1)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-xl transition-colors text-violet-500">
+            <PlusCircle size={16} strokeWidth={3} />
           </button>
         </div>
-      )}
+      </div>
+
+      <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800/50">
+        <div className="flex items-center gap-3">
+          {mode === 'edit' && (
+            <button {...attributes} {...listeners} className="text-slate-300 dark:text-slate-600">
+              <GripVertical size={18} />
+            </button>
+          )}
+          <span className="text-[10px] font-black uppercase tracking-[0.15em] px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800" style={{ color: item.catColor }}>
+            {item.catName}
+          </span>
+        </div>
+
+        {mode === 'edit' && (
+          <div className="flex items-center gap-1">
+            <button 
+              onClick={() => toggleFavorite(item.id)}
+              className={`p-2 rounded-xl transition-colors ${item.isFavorite ? 'bg-amber-400/10 text-amber-500' : 'text-slate-300 dark:text-slate-600'}`}
+            >
+              <Star size={20} className={item.isFavorite ? 'fill-amber-500' : ''} />
+            </button>
+            <button onClick={() => deleteItem(item.id)} className="p-2 rounded-xl text-slate-300 dark:text-slate-600 hover:bg-red-500/10 hover:text-red-500 transition-colors">
+              <Trash2 size={20} />
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
