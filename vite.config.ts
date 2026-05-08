@@ -12,8 +12,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'Los Mandaos de Evi Pro',
-        short_name: 'LME Pro',
+        name: 'EviShop Premium',
+        short_name: 'EviShop',
         description: 'La lista de la compra inteligente de Evi',
         theme_color: '#8b5cf6',
         icons: [
