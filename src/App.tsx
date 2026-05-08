@@ -400,6 +400,7 @@ const App: React.FC = () => {
           </div>
 
           <div className="space-y-2"><label className="text-xs font-black uppercase text-slate-400">Gemini API Key</label><input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="AIza..." className="w-full p-5 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 dark:text-white outline-none" /></div>
+          <div className="space-y-2"><label className="text-xs font-black uppercase text-slate-400">Color App</label><div className="flex justify-between gap-2 p-4 bg-white dark:bg-slate-800 rounded-3xl border dark:border-slate-700">{['violet', 'blue', 'emerald', 'rose', 'amber'].map(t => <button key={t} onClick={() => setThemeColor(t)} className={`w-10 h-10 rounded-full bg-gradient-to-br ${themes[t].from} ${themes[t].to} ${themeColor === t ? 'ring-4 ring-slate-200 dark:ring-slate-600' : ''}`} />)}</div></div>
           
           <div className="flex items-center justify-between p-5 bg-white dark:bg-slate-800 rounded-3xl border dark:border-slate-700">
             <span className="text-sm font-bold dark:text-white">Modo Oscuro</span>
